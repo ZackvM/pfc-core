@@ -36,7 +36,7 @@
 *.svg
 *.jpg
 *.xcf
-
+*.swp
 
 # OS generated files #
 ######################
