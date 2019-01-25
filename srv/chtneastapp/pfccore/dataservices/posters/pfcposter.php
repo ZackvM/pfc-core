@@ -121,33 +121,6 @@ class pagerequests {
             ));
     }
 
-    function BUpublichome($mobilelayout = "") {
-      //$rqst = __FUNCTION__;
-     // $pgH = new pgHeader();
-     // $pgS = new pgStyles();
-     // $jv = new pgScriptr();
-     // $bdy = new pgBody();
-     // $preamb = $pgH->$rqst($mobilelayout);
-     // $sty = $pgS->$rqst($mobilelayout);
-     // $jvcontent = $jv->$rqst($mobilelayout);
-     // $pgContent = $bdy->$rqst($mobilelayout);
-      // return json_encode(array(
-      //     "preamble" => htmlspecialchars("<!DOCTYPE html><html>")
-       //    , "head" => htmlspecialchars($preamb)
-       //    , "style" => htmlspecialchars($sty)
-       //    , "javascriptr" => htmlspecialchars($jvcontent)
-       //    , "body" => htmlspecialchars($pgContent)
-       //  ));
-
-        return json_encode(array(
-            "preamble" => htmlspecialchars("<!DOCTYPE html><html>")
-            , "head" => htmlspecialchars(publichome_header())
-            , "style" => htmlspecialchars(publichome_style($mobilelayout))
-            , "javascriptr" => htmlspecialchars("")
-            , "body" => htmlspecialchars(publichome_body($mobilelayout))
-            ));
-    }
-
     function park($mobilelayout = "", $rqstPage = "") {
         return json_encode(array(
             "preamble" => htmlspecialchars("<!DOCTYPE html><html>")
@@ -157,7 +130,6 @@ class pagerequests {
             , "body" => htmlspecialchars(park_body())
             ));
     }
-
 
 }
 
@@ -305,9 +277,9 @@ return $rtnThis;
 
 function publichome($mobileIndicator) {
 
-//$appPath = genAppFiles;
-//$icon = $appPath . "/publicobj/graphics/unsplash-testtube.jpg";
-//$testtube = base64file($icon, "upennicon", "image", false);
+$appPath = genAppFiles;
+$icon = $appPath . "/publicobj/graphics/unsplash-testtube.jpg";
+$testtube = base64file($icon, "upennicon", "image", false);
 
 if ($mobile !== "m") {
     $rtnThis = <<<RTNTHIS
@@ -357,7 +329,7 @@ return $rtnThis;
 class pgScriptr {
 
 function contactpfrp($mobileIndicator) {
-  $topTree = pfcurl;
+$topTree = pfcurl;
 if ($mobileIndicator !== "m") {
     //FULL SITE
     $rtnThis = <<<RTNTHIS
@@ -394,7 +366,7 @@ return $rtnThis;
 }
 
 function pfrpprocess($mobileIndicator) {
-  $topTree = pfcurl;
+$topTree = pfcurl;
 if ($mobileIndicator !== "m") {
     //FULL SITE
     $rtnThis = <<<RTNTHIS
@@ -447,6 +419,8 @@ function makeMenuAppear() {
     byId('menuHolder').style.top = "-5vh";
   }
 }
+
+//TOPTREE: {$topTree}
 
 function navigateSite(whichpage) {
 if (whichpage.trim() === "") {
@@ -693,9 +667,9 @@ function park_body($mobile) {
     $topTree = pfcurl;
     $rtnThis = <<<RTNTHIS
 <div class="wrapper">
-            <div class="message"><center>University of Pennsylvania Pathology Feasibility Committee (PFC)</center><p>You have reached the servers for the University of Pennsylvania Pathology Feasibility Committee.  The webpage which you request cannot be found.   If you need assistance, please call Diane McGarvey at (215) 662-4570 or email us at dfitzsim@pennmedicine.upenn.edu
+            <div class="message"><center>University of Pennsylvania Pathology Feasibility Committee (PFC)</center><p>You have reached the servers for the University of Pennsylvania Pathology Feasibility Committee.  The webpage which you request cannot be found or is being upgraded to serve you better.   If you need assistance, please call Diane McGarvey at (215) 662-4570 or email us at dfitzsim@pennmedicine.upenn.edu
             <p>
-            To go back to the main page, <a href="{$topTree}">Click Here</a>
+            <!-- To go back to the main page, <a href="{$topTree}">Click Here</a> //-->
             </div>
 </div>
 RTNTHIS;

@@ -44,6 +44,7 @@ if ( strtoupper($method) !== "POST" && strtoupper($method) !== "OPTIONS" ) {
   //DEFINE APPLICATION  PARAMETERS
   define("uriPath","pfcdata.chtneast.org");
   define("treeTop","https://pfcdata.chtneast.org");
+  define("pfcurl","https://pfc.med.upenn.edu");
   define("dataPath","https://pfcdata.chtneast.org");
   define("applicationTree","/srv/chtneastapp/pfcdata/frame");
   define("genAppFiles","/srv/chtneastapp/pfccore");
@@ -69,27 +70,46 @@ if ( strtoupper($method) !== "POST" && strtoupper($method) !== "OPTIONS" ) {
   $originalRequest = str_replace("-","", strtolower($_SERVER['REQUEST_URI']));
   $request = explode("/",str_replace("-","", strtolower($_SERVER['REQUEST_URI']))); 
 
-
   $postedData = file_get_contents('php://input');
   if (trim($postedData) !== "") { 
     $passedPayLoad = trim($postedData);
-  } 
-   
-  $responseCode = 401; 
-  $msg = "";
-  $datareturn = "";
+  }  
+  
+  if (trim($request[1]) === "") {
+    $responseCode = 401; 
+    $msg = "";
+    $datareturn = "";
+    require(genAppFiles . "/dataservices/posters/pfcposter.php");
+    $doer = new dataposters($originalRequest, $passedPayLoad); 
+    $responseCode = $doer->responseCode; 
+    $msg = $doer->message;
+    $data = $doer->rtnData;
+    http_response_code($responseCode);
+    echo json_encode(array('responseCode' => $responseCode,'message' => $msg, 'datareturn' => $data));
+  } else { 
 
-  require(genAppFiles . "/dataservices/posters/pfcposter.php");
-  $doer = new dataposters($originalRequest, $passedPayLoad); 
-  $responseCode = $doer->responseCode; 
-  $msg = $doer->message;
-  $data = $doer->rtnData;
+      //PFC APPLICATION FILES
+      switch (trim($request[1])) {
+        case 'pfcapplication':
 
-  http_response_code($responseCode);
-  echo json_encode(array('responseCode' => $responseCode,'message' => $msg, 'datareturn' => $data));
+          $responseCode = 401;
+          $msg = "";
+          $itemsfound = 0;
+          $datareturn = "";
+          
+          require(genAppFiles . "/dataservices/posters/pfcapplication.php");
+          $doer = new pfcapplication($originalRequest, $passedPayLoad);
+          
+          $responseCode = $doer->responseCode;
+          $itemsfound = $doer->itemsFound;
+          $msg = $doer->message;
+          $data = $doer->rtnData;
+          
+          http_response_code($responseCode);
+          echo json_encode(array('responseCode' => $responseCode, 'message' => $msg, 'itemsfound' => $itemsfound,'datareturn' => $data));
+          break;
+      }
+  
+  }
 
 }
-
-
-
-

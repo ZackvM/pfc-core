@@ -4,72 +4,7 @@ class pfcapplication {
   public $itemsFound = 0;
   public $rtnData = array();
 
-function apprequest($request, $passedData, $rUsr, $rSess) {     
-    $pDta = json_decode($passedData, true); 
-    $sysid = chtndecrypt($pDta['systemid']);
-    $logdUsr = chtndecrypt( $pDta['userid'] ); 
-    $rqstParts = explode("/",$pDta['requested']);
-    if ($sysid === "PFC-USER") {         
-
-        //PFCMEMBER
-        $pfrpMember = pfcmember($logdUsr);
-        if ($pfrpMember['responseCode'] === 200) { 
-            //PANEL MEMBER
-            if (trim($rqstParts[3]) === "") { 
-              $rqstPage = "memberapphome";
-            } else { 
-              parse_str(str_replace("?","", str_replace("-","",strtolower($rqstParts[3]))), $rqstDetermine);
-              $rqstPage = $rqstDetermine['page'];        
-            }            
-            pfclogactivity($pfrpMember['memid'], $logdUsr, $pfrpMember['firstname'], $pfrpMember['lastname'], $pfrpMember['email'], $rqstPage);
-            //CHECK PAGE EXISTS IN THIS USERS CONTEXT
-           $allowedPages = ["memberapphome","membertemplate","projectlisting"];
-           $pg = new pfcpages();
-           if (in_array($rqstPage, $allowedPages)) { 
-               //PULL PAGE
-               $rtnPageArr = $pg->$rqstPage($pDta['requested'], $pfrpMember);
-           } else { 
-               //PULL NOT FOUND
-               $rtnPageArr = $pg->notfound($rqstPage, $pfrpMember);
-           }
-           $this->message = $pfrpMember['memid'] . " " . $pfrpMember['firstname'];                        
-        } 
-
-        //GENERAL USER
-        if ($pfrpMember['responseCode'] === 404) { 
-            $pfrpid = setPFRPID($logdUsr);
-            //GENERAL AUDIENCE
-            if (trim($rqstParts[3]) === "") { 
-              $rqstPage = "genuserapphome";
-            } else { 
-              parse_str(str_replace("?","", str_replace("-","",strtolower($rqstParts[3]))), $rqstDetermine);
-              $rqstPage = $rqstDetermine['page'];        
-            }             
-            pfclogactivity(0, $logdUsr, "", "", "", $rqstPage);
-            //CHECK PAGE EXISTS IN THIS USERS CONTEXT
-            $allowedPages = ["genuserapphome","myprojects","submitnewproject"];
-            $pg = new pfcpages();
-            if (in_array($rqstPage, $allowedPages)) { 
-               //PULL PAGE
-               $rtnPageArr = $pg->$rqstPage($rqstPage, $pfrpMember, $pfrpid['pfrpid'],$rqstDetermine['projid']);               
-            } else { 
-               //PULL NOT FOUND
-               $rtnPageArr = $pg->notfound($rqstPage, $pfrpMember);
-            }                        
-        }
-
-
-        $this->rtnData = $rtnPageArr;
-        $this->responseCode = 200;
-    } else { 
-        //SYSTEM IS NOT CORRECT
-        $this->message = "NOT SYSTEM ID - FAILURE";
-    }
-
-    $rows['statusCode'] = $this->responseCode;
-    $rows['data'] = array("MESSAGE" => "", "ITEMS" => $this->itemsFound, "DATA" => $this->rtnData);
-    return $rows;
-}    
+    
     
 function livestatuslist($request, $passedData, $rUsr, $rSession) { 
     $pDta = json_decode($passedData, true);
