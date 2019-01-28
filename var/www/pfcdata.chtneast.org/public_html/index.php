@@ -25,7 +25,7 @@ if ( strtoupper($method) !== "POST" && strtoupper($method) !== "OPTIONS" ) {
   if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     //    if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD']) && $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD'] == 'POST') {
     header('Access-Control-Allow-Origin: *');
-    header('Access-Control-Allow-Headers: X-Requested-With, content-type, access-control-allow-origin, access-control-allow-methods, access-control-allow-headers, api-token-user, api-token-key, api-token-pair, pfc-token, pfc-user-token, pfc-data-token, chtn-public,zack-override, override-user, tidal-user');
+    header('Access-Control-Allow-Headers: X-Requested-With, content-type, access-control-allow-origin, access-control-allow-methods, access-control-allow-headers, pfc-token, pfc-pass, pfc-data-token, chtn-public, zack-override');
     //  }
     exit;
   }
@@ -45,6 +45,7 @@ if ( strtoupper($method) !== "POST" && strtoupper($method) !== "OPTIONS" ) {
   define("uriPath","pfcdata.chtneast.org");
   define("treeTop","https://pfcdata.chtneast.org");
   define("pfcurl","https://pfc.med.upenn.edu");
+  define("pfcsecureurl","https://pfc.med.upenn.edu");
   define("dataPath","https://pfcdata.chtneast.org");
   define("applicationTree","/srv/chtneastapp/pfcdata/frame");
   define("genAppFiles","/srv/chtneastapp/pfccore");
@@ -79,35 +80,45 @@ if ( strtoupper($method) !== "POST" && strtoupper($method) !== "OPTIONS" ) {
     $responseCode = 401; 
     $msg = "";
     $datareturn = "";
+
+    //THESE ARE PAGE INTERFACES
     require(genAppFiles . "/dataservices/posters/pfcposter.php");
+
     $doer = new dataposters($originalRequest, $passedPayLoad); 
     $responseCode = $doer->responseCode; 
     $msg = $doer->message;
     $data = $doer->rtnData;
     http_response_code($responseCode);
     echo json_encode(array('responseCode' => $responseCode,'message' => $msg, 'datareturn' => $data));
+
   } else { 
 
       //PFC APPLICATION FILES
       switch (trim($request[1])) {
         case 'pfcapplication':
-
+          //CHECK pfc-token / pfc-pass / zack-override
           $responseCode = 401;
           $msg = "";
           $itemsfound = 0;
           $datareturn = "";
-          
+          //THESE ARE DATA INTERFACES          
           require(genAppFiles . "/dataservices/posters/pfcapplication.php");
-          $doer = new pfcapplication($originalRequest, $passedPayLoad);
-          
+          $doer = new pfcdataapplication($originalRequest, $passedPayLoad);
           $responseCode = $doer->responseCode;
           $itemsfound = $doer->itemsFound;
           $msg = $doer->message;
           $data = $doer->rtnData;
-          
           http_response_code($responseCode);
           echo json_encode(array('responseCode' => $responseCode, 'message' => $msg, 'itemsfound' => $itemsfound,'datareturn' => $data));
           break;
+        default:
+          //BAD DEFINITION
+          $responseCode = 501;
+          $itemsfound = 0;
+          $msg = "BAD DEFINITION";
+          $data = array();
+          http_response_code($responseCode);
+          echo json_encode(array('responseCode' => $responseCode, 'message' => $msg, 'itemsfound' => $itemsfound,'datareturn' => $data));
       }
   
   }
