@@ -27,7 +27,7 @@ class pfcdataapplication {
                 $this->message = $doer->message;
                 $this->itemsFound = $doer->itemsFound;
                 $this->rtnData = $doer->rtnData;
-                $this->message = "{$funcName}";
+                //$this->message = "{$funcName}";
             } else { 
               //REQUESTED METHOD DOES NOT EXIST
             }
@@ -580,23 +580,25 @@ function pfrpdecision($request, $passedData, $rUsr, $rSession) {
 }
 
 function getpfrpdocument($request, $passedData, $rUsr, $rSession) {
+
     $docDta = json_decode($passedData, true);
     $docArr = json_decode($docDta['datapayload'], true);
+    $rUsr = pfccryptservice($_SERVER['HTTP_PFC_TOKEN'],'d',false);
+    
     require(genAppFiles .  "/dataconn/sspdo.zck");
     $memSQL = "SELECT pfcmemberId FROM pfc.sys_pfcmember_pennkey where allowqry = 1 and pfcpennkeyref = :pennkey";
     $memR = $conn->prepare($memSQL);
     $memR->execute(array(':pennkey' => $rUsr));
     if ($memR->rowCount() < 1) {
-      $chkSQL = "SELECT pj.projectid, originalDocumentName, directorydocumentname FROM pfc.ut_projects_documents dc left join pfc.ut_projects pj on dc.projectid = pj.projectid where directorydocumentname = :docname and pennkey = :userpkey union
-SELECT projectid, 'systemgeneratedpdf', projectpdf FROM pfc.ut_projects where pennkey = :userpkeyprj and projectpdf = :docnameprj";
+      $chkSQL = "SELECT pj.projectid, originalDocumentName, directorydocumentname FROM pfc.ut_projects_documents dc left join pfc.ut_projects pj on dc.projectid = pj.projectid where directorydocumentname = :docname and pennkey = :userpkey union SELECT projectid, 'systemgeneratedpdf', projectpdf FROM pfc.ut_projects where pennkey = :userpkeyprj and projectpdf = :docnameprj";
       $r = $conn->prepare($chkSQL);
       $r->execute(array(':docname' => $docArr['qryDocument'], ':userpkey' => $rUsr,':docnameprj' => $docArr['qryDocument'], ':userpkeyprj' => $rUsr     ));
     } else {
-      $chkSQL = "SELECT pj.projectid, originalDocumentName, directorydocumentname FROM pfc.ut_projects_documents dc left join pfc.ut_projects pj on dc.projectid = pj.projectid where directorydocumentname = :docname union
-SELECT projectid, 'systemgeneratedpdf', projectpdf FROM pfc.ut_projects where projectpdf = :docnameprj";
+      $chkSQL = "SELECT pj.projectid, originalDocumentName, directorydocumentname FROM pfc.ut_projects_documents dc left join pfc.ut_projects pj on dc.projectid = pj.projectid where directorydocumentname = :docname union SELECT projectid, 'systemgeneratedpdf', projectpdf FROM pfc.ut_projects where projectpdf = :docnameprj";
       $r = $conn->prepare($chkSQL);
       $r->execute(array(':docname' => $docArr['qryDocument'],':docnameprj' => $docArr['qryDocument'] ));
     }
+    
     if ($r->rowCount() > 0) {
        $documentLink = genAppFiles . "/publicobj/documents/pfrp/{$docArr['qryDocument']}";
        $documentBaseCode = base64file($documentLink, "PFRPDOCUMENT","DOCPDF", false);
@@ -605,11 +607,7 @@ SELECT projectid, 'systemgeneratedpdf', projectpdf FROM pfc.ut_projects where pr
     } else {
         $this->message = "USER NOT ALLOWED ACCESS TO THIS DOCUMENT";
         $this->rtnData = $docArr['qryDocument'];
-    }
-    $rtn = array("MESSAGE" => $this->message, "ITEMS" => $this->itemsFound, "DATA" => $this->rtnData);
-    $rows['statusCode'] = $this->responseCode;
-    $rows['data'] = $rtn;
-    return $rows;
+    } 
 }
 
 function _clean($str) {

@@ -65,11 +65,15 @@ function cryptservice( $string, $action = 'e', $usedbkey = false, $passedsid = "
 
 function base64file($path, $identifier, $expectedObject, $createObject = true, $additionals = "") {
   $object = NULL;
+        
   if (!file_exists($path) || !is_file($path)) {
+      $object = "OBJECT DOES NOT EXIST";
   } else {
+      
     ob_start();
     readfile($path);
     $filecontent = base64_encode(ob_get_clean());
+
     if ($createObject) {
       $mime = mime_content_type($path);
       switch ($expectedObject) {

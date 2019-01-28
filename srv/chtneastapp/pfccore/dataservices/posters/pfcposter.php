@@ -70,7 +70,7 @@ function corecontrol($request, $passedData) {
         $rows['headr'] = $pge['head'];
         $rows['style'] = $pge['style'];
         $rows['scriptr'] = $pge['javascriptr'];
-        $rows['body'] = $pge['body'];        
+        $rows['body'] = $pge['body'];
       break;
       case 'APPPAGE':
         $sysid = pfccryptservice($pd['systemid'],'d',false); 
@@ -95,21 +95,25 @@ function corecontrol($request, $passedData) {
               $rows['statusCode'] = 200;
           } else { 
             //PAGE BUILDER DOESN'T EXIST - DISPLAY PARK PAGE
-              $rows['statusCode'] = 350;
+              $rows['statusCode'] = 404;
               $rows['message'] = $pgenme; 
-              $rows['data'] = $pfcmember['responseCode']; 
-              $rows['preamble'] = $pge['preamble'];
-              $rows['headr'] = $pge['head'];
-              $rows['style'] = $pge['style'];
-              $rows['scriptr'] = $pge['javascriptr'];
-              $rows['body'] = $pge['body']; 
+              $rows['data'] = ""; 
+              $rows['preamble'] = "";
+              $rows['headr'] = "";
+              $rows['style'] = "";
+              $rows['scriptr'] = "";
+              $rows['body'] = "PAGE NOT FOUND"; 
           }
-
-
-
-
         } else { 
           //NOT COMING FROM SERVER REQUEST - DISALLOW!!!!! 
+              $rows['statusCode'] = 404;
+              $rows['message'] = $pgenme; 
+              $rows['data'] = ""; 
+              $rows['preamble'] = "";
+              $rows['headr'] = "";
+              $rows['style'] = "";
+              $rows['scriptr'] = "";
+              $rows['body'] = "PAGE REQUEST FROM OUTSIDE SERVER";             
         }      
 
       break;
@@ -216,7 +220,7 @@ body {margin-top: 9vh; }
 </style>
 STYLESHT;
 
-$jvscript = self::globaljavascriptr(); 
+$jvscript = self::globaljavascriptr($usr); 
 $dtaTree = treeTop;
 $pfcsecure = pfcsecureurl . "/";
 $jvcontent = <<<JAVASCRIPTR
@@ -255,18 +259,18 @@ function grabdocumentpdf(whichdocument) {
    var dta = new Object(); 
    crd['qryDocument'] = whichdocument;
    dta['datapayload'] = JSON.stringify(crd);
-   var passdata = JSON.stringify(dta);  
+   var passdata = JSON.stringify(dta);
    var mlURL = "{$dtaTree}/pfcapplication/getpfrpdocument";
    httpage.open("POST",mlURL,true);
-   httpage.setRequestHeader("pfc-user-token",usree);
+   httpage.setRequestHeader("pfc-token",usree);
    httpage.setRequestHeader("pfc-data-token",datakey);
    httpage.onreadystatechange = function () { 
        if (httpage.readyState === 4) {
          switch (httpage.status) { 
            case 200:
               var rcd = JSON.parse(httpage.responseText);
-              var doc = JSON.parse(rcd['message']);
-              var documentBaseCode = doc['DATA'];
+              var doc = rcd['datareturn'];
+              var documentBaseCode = doc;
               var objbuilder = '';
               objbuilder += '<object style="height: 77vh; width: 100%;" data="data:application/pdf;base64,';
               objbuilder += documentBaseCode;
@@ -285,7 +289,7 @@ function grabdocumentpdf(whichdocument) {
          }
       }
     };
-   httpage.send(passdata); 
+    httpage.send(passdata); 
 }
 
 function saveReview() { 
@@ -411,7 +415,7 @@ if ((int)$pHold['responseCode'] === 200) {
       $qCount += 1;    
     }
     if (trim($head['projectpdf']) !== "") { 
-      $innerDocs .= "<tr onclick=\"grabdocumentpdf('{$head['DATA']['projectpdf']}');\"><td>{$qCount}</td><td>Project PDF</td><td>&nbsp;</td></tr>";
+      $innerDocs .= "<tr onclick=\"grabdocumentpdf('{$head['projectpdf']}');\"><td>{$qCount}</td><td>Project PDF</td><td>&nbsp;</td></tr>";
     }
     $innerDocs .= "</table>";
 
@@ -439,11 +443,7 @@ if ((int)$pHold['responseCode'] === 200) {
       $emailSelect .= "<option value=\"BADVALUE\">ERROR NO MENU FOUND IN SERVICE</option>";
     }
     $emailSelect .= "</select>"; 
-
     $copySelect = "<select id=pfrpCopyMe><option value=\"NO\">NO</option><option value=\"YES\">YES</option></select>";
-
-//<tr><td><table><tr><td class=datalabel>Copy Me on Decision Email</td></tr><tr><td>{$copySelect}</td></tr></table></td><td align=right><table id=pfrpSaveButton onclick="saveReview();"><tr><td>Save</td></tr></table></td></tr>
-
     $completeind = $head['completeind'];
     if ((int)$completeind === 1) { 
     $reviewSide = <<< REVIEWSIDE
@@ -542,9 +542,7 @@ RTNTHIS;
 $apk = serverPW;
 $passData = json_encode(array("pennkey" => pfccryptservice($usr)));    
 $statWS = json_decode(callpfcrestapi("POST","https://pfcdata.chtneast.org/pfcapplication/livestatuslist",$passData),true);
-//"responseCode":200,"message":"livestatuslist","itemsfound":5,"datareturn":[{"datastatus":"SUBMITTED","statusmodifier":"SUBMITTED","projstatusdsp":"SUBMITTED","furtherActionInd":1,"completionActionInd":0}
-if ($statWS['responseCode'] === 200) { 
-    //$stdta = json_decode($statWS['message'], true);   
+if ($statWS['responseCode'] === 200) {   
     if ((int)$statWS['itemsfound'] < 1) {
       $statusMenu = "NO MENU ITEMS FOUND"; 
     } else {
@@ -566,16 +564,11 @@ if (trim($rqstDetermine['status']) !== "") {
   $dta['datapayload'] = json_encode($crd); 
   $passData = json_encode($dta);  
   $statList = json_decode(callpfcrestapi("POST","https://pfcdata.chtneast.org/pfcapplication/projectsbystatus",$passData), true);
-
-//{"responseCode":200,"message":"projectsbystatus","itemsfound":1,"datareturn":[{"projectStatus":"IN REVIEW","dspprojectid":"000325","userId":31,"submittingpennkey":"zacheryv","projectpdffilename":"projectApplication325.pdf","projectTitle":"Test Test","irbNbr":"1111-111-1111","irbExpiration":"2019-12-15","laststatusby":"linus","statusDate":"2018-12-05 11:16:40","pfcapprovalnbr":"","piname":"LiVolsi, Virginia","piphone":"215-555-1212","piemail":"zacheryv@mail.med.upenn.edu"}]}
-//  $statDta = json_decode($statList['message'],true);
-//  $statTblDta = json_decode($statDta['DATA'], true);
   $projectCount = $statList['itemsfound'];
   $addS = "";
   if ((int)$projectCount > 1) { 
     $addS = "s";
   }
-
   $statusTbl = "<center><h1>" . strtoupper(urldecode($rqstDetermine['status'])) . "</h1></center>";
   $statusTbl .= "<table border=0 id=projectLister><thead><tr><td colspan=12 id=pcounter>{$projectCount} project{$addS} found</td></tr>";
   $statusTbl .= "<tr><th style=\"text-align: center;\">PDF</th><th>Project #</th><th>PI Name</th><th>PI Phone</th><th>PI Email</th><th>Submitter</th><th>Project Title</th><th>IRB #</th><th>IRB Expire</th><th>Last Statused</th><th>Last Date</th><th>PFC Approval</th></tr><thead><tbody>";
@@ -741,6 +734,7 @@ function globaljavascriptr($usr) {
 $tt = "https://hosting.med.upenn.edu/pfc/secure";
 $dtakey = generatePFCSessionKey($usr);
 $usrEncrypt = pfccryptservice($usr,'e',false);
+
 
 $rtnThis = <<<RTNTHIS
 
@@ -915,47 +909,49 @@ return req;
 }
 
 function grabdocumentpdf(whichdocument) {
-   var crd = new Object();
-   var dta = new Object();
-   crd['qryDocument'] = whichdocument;
-   dta['datapayload'] = JSON.stringify(crd);
-   var passdata = JSON.stringify(dta);
-   var mlURL = "{$dtaTree}/pfcapplication/getpfrpdocument";
-   httpage.open("POST",mlURL,true);
-   httpage.setRequestHeader("pfc-user-token","{$usrEncrypt}");
-   httpage.setRequestHeader("pfc-data-token","{$dtakey}");
-   httpage.onreadystatechange = function () {
-       if (httpage.readyState === 4) {
-         switch (httpage.status) {
-           case 200:
-              var rcd = JSON.parse(httpage.responseText);
-              var doc = JSON.parse(rcd['message']);
-              var documentBaseCode = doc['DATA'];
 
-              var objbuilder = '';
-              objbuilder += '<object style="height: 77vh; width: 100%;" data="data:application/pdf;base64,';
-              objbuilder += documentBaseCode;
-              objbuilder += '" type="application/pdf" class="internal">';
-              objbuilder += '<embed src="data:application/pdf;base64,';
-              objbuilder += documentBaseCode;
-              objbuilder += '" type="application/pdf"  />';
-              objbuilder += '</object>';
-
-              byId('displayThisPDF').innerHTML = objbuilder;
-
-              byId('modalBack').style.display = 'block'
-              byId('pdfDisplay').style.display = 'block';
-              //var newWindow = window.open();
-              //newWindow.document.write('<iframe src="data:application/pdf;base64,' + documentBaseCode + '" frameborder="0" allowfullscreen width=100% height=100%></iframe>');
-              //newWindow.document.title = "PFRP Document";
-            break;
-           default:
-             var rcd = httpage.responseText;
-             alert(rcd);
-         }
-      }
-    };
-   httpage.send(passdata);
+//   var crd = new Object();
+//   var dta = new Object();
+//   crd['qryDocument'] = whichdocument;
+//   dta['datapayload'] = JSON.stringify(crd);
+//   var passdata = JSON.stringify(dta);
+//   var mlURL = "{$dtaTree}/pfcapplication/getpfrpdocument";
+//   httpage.open("POST",mlURL,true);
+//  httpage.setRequestHeader("pfc-token","{$usrEncrypt}");
+//   httpage.setRequestHeader("pfc-data-token","{$dtakey}");
+//   httpage.onreadystatechange = function () {
+//       if (httpage.readyState === 4) {
+//         switch (httpage.status) {
+//           case 200:
+//              var rcd = JSON.parse(httpage.responseText);
+ //             var doc = JSON.parse(rcd['message']);
+//              var documentBaseCode = doc['DATA'];
+//
+//              var objbuilder = '';
+//              objbuilder += '<object style="height: 77vh; width: 100%;" data="data:application/pdf;base64,';
+//              objbuilder += documentBaseCode;
+//              objbuilder += '" type="application/pdf" class="internal">';
+//              objbuilder += '<embed src="data:application/pdf;base64,';
+//              objbuilder += documentBaseCode;
+//              objbuilder += '" type="application/pdf"  />';
+//              objbuilder += '</object>';
+//
+//              byId('displayThisPDF').innerHTML = objbuilder;
+//
+//              byId('modalBack').style.display = 'block'
+//              byId('pdfDisplay').style.display = 'block';
+//              //var newWindow = window.open();
+//              //newWindow.document.write('<iframe src="data:application/pdf;base64,' + documentBaseCode + '" frameborder="0" allowfullscreen width=100% height=100%></iframe>');
+//              //newWindow.document.title = "PFRP Document";
+//            break;
+//           default:
+//             var rcd = httpage.responseText;
+//             alert(rcd);
+//         }
+//      }
+//    };
+//   httpage.send(passdata);
+alert('ZACK WAS HERE');
 }
 
 function submitPFRPApplication() {

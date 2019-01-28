@@ -96,22 +96,25 @@ if ( strtoupper($method) !== "POST" && strtoupper($method) !== "OPTIONS" ) {
       //PFC APPLICATION FILES
       switch (trim($request[1])) {
         case 'pfcapplication':
-          //CHECK pfc-token / pfc-pass / zack-override
+
+          //TODO:  CHECK pfc-token / pfc-pass / zack-override            
           $responseCode = 401;
           $msg = "";
           $itemsfound = 0;
-          $datareturn = "";
+          $datareturn = "";                 
           //THESE ARE DATA INTERFACES          
           require(genAppFiles . "/dataservices/posters/pfcapplication.php");
           $doer = new pfcdataapplication($originalRequest, $passedPayLoad);
           $responseCode = $doer->responseCode;
           $itemsfound = $doer->itemsFound;
           $msg = $doer->message;
-          $data = $doer->rtnData;
+          $data = $doer->rtnData;                          
           http_response_code($responseCode);
           echo json_encode(array('responseCode' => $responseCode, 'message' => $msg, 'itemsfound' => $itemsfound,'datareturn' => $data));
+          
           break;
-        default:
+      
+         default:
           //BAD DEFINITION
           $responseCode = 501;
           $itemsfound = 0;
