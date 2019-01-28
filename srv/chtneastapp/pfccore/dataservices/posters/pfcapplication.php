@@ -47,6 +47,58 @@ class pfcapplication {
   public $message = "";
   public $itemsFound = 0;
   public $rtnData = array();
+  
+  function pfrpmemberemaillisting($request) { 
+      $rtnData = array();
+      require(genAppFiles . "/dataconn/sspdo.zck");
+      $emlSQL = "SELECT pfcmemberid, concat(ifnull(memberlastname,''),', ', ifnull(memberfirstname,''), ' (', ifnull(pfrptitle,''), ')') as membername FROM pfc.sys_pfcmember_pennkey order by memberlastname";
+      $emlR = $conn->prepare($emlSQL); 
+      $emlR->execute(); 
+      $emlDta = array(); 
+      while ($r = $emlR->fetch(PDO::FETCH_ASSOC)) { 
+        $rtnData[] = $r;
+      }
+      $this->responseCode = 200; 
+      $this->itemsFound = $emlR->rowCount();
+      $this->message = "";
+      $this->rtnData = $rtnData;
+   }
+  
+  function pfrpactions($request) {
+      //TODO: THIS FUNCTION IS THE GLOBALMENU FUNCTION FROM DATACHTNEAST AND SHOULD REALLY TO A HEADER FUNCTION OF ITS OWN
+     $rows = array(); 
+     $rParts = explode("/", $request); 
+     $gMenu = trim($rParts[2]);
+     //TO LOAD ALL METHODS IN A CLASS INTO AN ARRAY USE get_class_methods
+     //$gm = new globalMenus(); 
+     //if (method_exists($gm,$gMenu)) { 
+     //  $SQL = $gm->$gMenu($rParts[3]);
+     $SQL = "SELECT rsts.actionid as codevalue, rsts.reviewaction as menuvalue, 0 as useasdefault, '' as lookupvalue FROM pfc.appdata_project_reviewerstatus rsts where rsts.furtheractionind = 0 order by rsts.dspOrd";
+       if (trim($SQL) !== "") {
+         //RUN SQL - RETURN RESULTS
+         require(genAppFiles . "/dataconn/sspdo.zck");
+         $r = $conn->prepare($SQL); 
+         $r->execute(); 
+         $itemsFound = $r->rowCount();
+         while ($rs = $r->fetch(PDO::FETCH_ASSOC)) { 
+           $data[] = $rs;
+         }
+         $rows['statusCode'] = 200;
+         $rows['data'] = array('MESSAGE' => '', 'ITEMSFOUND' => $itemsFound, 'DATA' => $data);
+       } else { 
+         $rows['statusCode'] = 503;
+         $rows['data'] = array('MESSAGE' => 'NO SQL RETURNED', 'ITEMSFOUND' => 0,  'DATA' => '');
+       }
+     //} else {
+     //   $rows['statusCode'] = 404; 
+     //   $rows['data'] = array('MESSAGE' => 'MENU NOT FOUND', 'ITEMSFOUND' => 0, 'DATA' => "");
+     //}
+     $this->rtnData = $data;
+     $this->responseCode = 200;
+     $this->message = "";
+     $this->itemsFound = $itemsFound;
+     return $rows;
+    }
 
 function apprequest($request, $passedData, $rUsr, $rSess) {
     $pDta = json_decode($passedData, true);
@@ -200,7 +252,7 @@ function getmyprojects($request, $passedData, $rUsr, $rSession) {
 
 function getprojectbymember($request, $passedData, $rUsr, $rSession) {
    $pDta = json_decode($passedData, true);
-   $pKey = chtndecrypt( $pDta['pennkey'] );
+   $pKey = pfccryptservice( $pDta['pennkey'],'d',false );
    $pid = $pDta['projectid'];
    require(genAppFiles .  "/dataconn/sspdo.zck");
    $memberChkSQL = "SELECT pfcmemberid FROM pfc.sys_pfcmember_pennkey where allowQry = 1 and pfcpennkeyref = :memberkey";
@@ -210,7 +262,6 @@ function getprojectbymember($request, $passedData, $rUsr, $rSession) {
      $this->responseCode = 400;
      $this->message = "USER NOT ALLOWED";
    } else {
-
 
        $projSQL = "SELECT usr.pennkey, usr.firstname, usr.lastname, substr(concat('000000',ifnull(pj.projectid,'')), -6) as projectid, pj.projectpdf, pj.projecttitle, pj.irbnbr, pj.irbexpiration, ifnull(pj.approvalyear,'') as approvalyear, pj.completeind, ifnull(pj.pfcapprovalnumber,'') as pfcapprovalnumber, ifnull(pj.pfcapprovalexpiration,'') as pfcapprovalexpiration, date_format(pj.submitonwhen, '%m/%d/%Y') as submissiondate, cmt.projcomments, cmt.bywhom FROM pfc.ut_projectUsers usr left join pfc.ut_projects pj on usr.pennkey = pj.pennkey left join pfc.ut_projects_comments cmt on pj.projectid = cmt.projectid where pj.projectid = :projnbr";
    $projR = $conn->prepare($projSQL);
@@ -272,14 +323,11 @@ function getprojectbymember($request, $passedData, $rUsr, $rSession) {
        $projStatus = $prjStsR->fetchAll(PDO::FETCH_ASSOC);
        $projDta['statuses'] = $projStatus;
        $this->message = "";
+       $this->itemsFound = 1;
        $this->rtnData = $projDta;
        $this->responseCode = 200;
    }
    }
-   $rtn = array("MESSAGE" => $this->message, "ITEMS" => $this->itemsFound, "DATA" => $this->rtnData);
-   $rows['statusCode'] = $this->responseCode;
-   $rows['data'] = $rtn;
-   return $rows;
 }
 
 function getaproject($request, $passedData, $rUsr, $rSession) {

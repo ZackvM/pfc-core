@@ -141,18 +141,17 @@ class securepagerequests {
 
 
 function projectlisting( $usr, $usrmemid, $mobileind, $rqst, $memberinfo ) { 
-//    $tt = pfcurl;
-//    $securett = pfcsecureurl;
-//    $this->pageReturned = $rqst;
+$tt = pfcurl;
+$securett = pfcsecureurl;
 $preamb = "<!DOCTYPE html>\n<html>";
 $standhead = self::standardHeader();
-//    $this->userInfo = array("pfcMember" => true, "pfcPennKey" => $usr['pfcpennkey'], "pfcMemberFirstName" => $usr['firstname'], "pfcMemberLastName" => $usr['lastname'], "pfcMemberId" => $usr['memid'], "pfcMemberEmail" => $usr['email']);
-$head = <<<HDR
+$reviewhead = <<<HDR
 <!-- <META http-equiv="refresh" content="0;URL={$tt}"> //-->
-<!-- SCIENCESERVER IDENTIFICATION: {$securett}/?page={$rqst} //-->
+<!-- SCIENCESERVER IDENTIFICATION: {$securett}{$rqst} //-->
 {$standhead}
 <title>PFRP Project Listing</title>
 HDR;
+
 $ss = self::globalStyle();
 $style= <<<STYLESHT
 <style>
@@ -374,169 +373,169 @@ $pgContent = $cHeader;
 parse_str(str_replace("?","", str_replace("-","",strtolower($rqst))), $rqstDetermine);    
 
 if ($rqstDetermine['projid']) {
-//  if (is_numeric($rqstDetermine['projid'])) { 
-//    ///GET PROJECT
-//    $passData = json_encode(array("pennkey" => chtnencrypt($this->userInfo['pfcPennKey']),"projectid" => $rqstDetermine['projid']));
-//    $pHold = json_decode(callpfcrestapi("POST","https://data.chtneast.org/pfcapplication/getprojectbymember",pfcaccess,$passData), true);
+  if (is_numeric($rqstDetermine['projid'])) { 
+    ///GET PROJECT
+    $passData = json_encode(array("pennkey" => pfccryptservice($usr),"projectid" => $rqstDetermine['projid']));
+    $pHold = json_decode(callpfcrestapi("POST","https://pfcdata.chtneast.org/pfcapplication/getprojectbymember",$passData), true);
 //
-//if ((int)$pHold['responseCode'] === 200) { 
-////{"responseCode":200,"message":"{\"MESSAGE\":\"\",\"ITEMS\":0,\"DATA\":{"completeind\":0,,,,,,,,\"statuses\":[{\"datastatus\":\"SUBMITTED\",\"statusmodifier\":\"\",\"statusdate\":\"06\\\/23\\\/2018 12:35\",\"lettercomments\":\"\"},{\"datastatus\":\"IN REVIEW\",\"statusmodifier\":\"\",\"statusdate\":\"06\\\/25\\\/2018 09:40\",\"lettercomments\":\"\"},{\"datastatus\":\"IN REVIEW\",\"statusmodifier\":\"\",\"statusdate\":\"06\\\/25\\\/2018 09:41\",\"lettercomments\":\"\"}]}}","datareturn":""} 
-//    $head = json_decode($pHold['message'], true); 
-//    foreach($head['DATA']['contacts'] as $conval) { 
-//        switch($conval['contacttype']) { 
-//          case 'SUBMITTER':
-//              $subname = $conval['contactname'];
-//              $subphone = $conval['phonenbr'];
-//              $subemail = $conval['emailaddress'];
-//              break;
-//          case 'PROJECT-PI':
-//              $piname = $conval['contactname'];
-//              $piphone = $conval['phonenbr'];
-//              $piemail = $conval['emailaddress'];
-//             break;
-//        } 
-//    }
-//
-//    $innerAns = "<table border=0 style=\"width: 28vw;\">";
-//    $qCount = 1;
-//    foreach($head['DATA']['questionanswers'] as $ans) { 
- //     $innerAns .= "<tr><td valign=top style=\"border-bottom: 1px solid rgba({$this->color_zgrey},1);\">{$qCount}</td><td valign=top style=\"border-bottom: 1px solid rgba({$this->color_zgrey},1);\">{$ans['question']}</td><td valign=top style=\"border-bottom: 1px solid rgba({$this->color_zgrey},1);\">{$ans['answer']}</td></tr>";
-//      $qCount += 1;    
-//    }
-//    $innerAns .= "</table>";
-//
- //   $innerDocs = "<table border=0 style=\"width: 28vw;\">";
-//    $qCount = 1;
-//    foreach($head['DATA']['documents'] as $doc) { 
-//      $innerDocs .= "<tr onclick=\"grabdocumentpdf('{$doc['directorydocumentname']}');\"><td style=\"border-bottom: 1px solid rgba({$this->color_zgrey},1);\">{$qCount}</td><td style=\"border-bottom: 1px solid rgba({$this->color_zgrey},1);\">{$doc['typeofdocument']}</td><td style=\"border-bottom: 1px solid rgba({$this->color_zgrey},1);\">({$doc['uploadedon']}-{$doc['uploadedby']})</td></tr>";
-//      $qCount += 1;    
-//    }
-//    if (trim($head['DATA']['projectpdf']) !== "") { 
-//      $innerDocs .= "<tr onclick=\"grabdocumentpdf('{$head['DATA']['projectpdf']}');\"><td>{$qCount}</td><td>Project PDF</td><td>&nbsp;</td></tr>";
-//    }
-//    $innerDocs .= "</table>";
-//
- //   $decisionSelect = "<select id=pfrpDecision onchange=\"referReview(this.value);\"><option value=\"NA\">-</option>";
-//    $actionHold = json_decode(callpfcrestapi("GET","https://data.chtneast.org/globalmenu/pfrpactions",pfcaccess), true);
-//    if ($actionHold['responseCode'] === 200) { 
-//      $actionVals = json_decode($actionHold['datareturn'], true);
-//      foreach($actionVals['DATA'] as $actionv) { 
-//        $decisionSelect .= "<option value=\"{$actionv['codevalue']}\">{$actionv['menuvalue']}</option>";
-//      } 
-//    } else {
-//      $decisionSelect .= "<option value=\"BADVALUE\">ERROR NO MENU FOUND IN SERVICE</option>";
-//    }
-//    $decisionSelect .= "</select>"; 
-//
-//    $emailSelect = "<select id=pfrpReferEmailList>";
-//    $actionHold = json_decode(callpfcrestapi("GET","https://data.chtneast.org/pfrpmemberemaillisting",pfcaccess), true);
-//    if ($actionHold['responseCode'] === 200) { 
-//      $actionVals = json_decode($actionHold['datareturn'], true);
-//      foreach($actionVals['DATA'] as $actionv) { 
-//        $emailSelect .= "<option value=\"{$actionv['pfcmemberid']}\">{$actionv['membername']}</option>";
-//      } 
-//    } else {
-//      $emailSelect .= "<option value=\"BADVALUE\">ERROR NO MENU FOUND IN SERVICE</option>";
-//    }
-//    $emailSelect .= "</select>"; 
-//
-//    $copySelect = "<select id=pfrpCopyMe><option value=\"NO\">NO</option><option value=\"YES\">YES</option></select>";
-//
-////<tr><td><table><tr><td class=datalabel>Copy Me on Decision Email</td></tr><tr><td>{$copySelect}</td></tr></table></td><td align=right><table id=pfrpSaveButton onclick="saveReview();"><tr><td>Save</td></tr></table></td></tr>
-//
-//    $completeind = $head['DATA']['completeind'];
-//    if ((int)$completeind === 1) { 
-//    $reviewSide = <<< REVIEWSIDE
-//<table border=0><tr><td id=pfcreviewtitle>Pathology Feasibility Review </td></tr>
-//<tr><td> 
-//REVIEW HAS ALREADY BEEN COMPLETED.  THIS DISPLAY IS FOR REFERENCE ONLY.
-//</td></tr></table>
-//REVIEWSIDE;
-//    } else { 
-//    $reviewSide = <<< REVIEWSIDE
-//<table border=0><tr><td id=pfcreviewtitle>Pathology Feasibility Review</td></tr>
-//<tr><td> 
-//<table border=0>
-//<tr><td colspan=2 class=datalabel style="padding: 3vh 0 0 0;">Decision</td></tr>
-//<tr><td colspan=2>{$decisionSelect}</td></tr>
-//<tr><td colspan=2 class=datalabel style="padding: 3vh 0 0 0;">Comments to Include in Letter to Investigator</td></tr>
-//<tr><td colspan=2><TEXTAREA id=txtLetterComments class=reviewcomments></TEXTAREA></td></tr>
-//<tr><td colspan=2 class=datalabel style="padding: 3vh 0 0 0;">Internal PFRP Comments</td></tr>
-//<tr><td colspan=2><TEXTAREA id=txtInternalComments class=reviewcomments></TEXTAREA></td></tr>
-//<tr><td></td><td align=right><table id=pfrpSaveButton onclick="saveReview();"><tr><td>Save</td></tr></table></td></tr>
-//</td></tr></table>
-//REVIEWSIDE;
-//    }
-//    
-//    
-//    $dspThis = <<< DSPTHIS
-//<table border=0 id=reviewHoldingTbl>
-//  <tr>
-//  <td id=reviewSidePanel valign=top>
-//  
-//  <table border=0 id=projectDisplay>
-//    <tr><td colspan=2 id=projDspProjectId>Project {$head['DATA']['projectid']} <input type=hidden id=fldprojectidreference value={$head['DATA']['projectid']}></td></tr>
-//    <tr><td colspan=2 id=projDspProjectTitle>{$head['DATA']['projecttitle']}</td></tr>
-//
-//    <tr><td colspan=2 class=projDspHeader>Details</td></tr>
-//    <tr><td class=datalabel>Submission Date:&nbsp;</td><td class=dataline>{$head['DATA']['submissiondate']}&nbsp;</td></tr> 
-//    <tr><td class=datalabel>IRB Number:&nbsp;</td><td class=dataline>{$head['DATA']['irbnbr']}&nbsp;</td></tr>
-//    <tr><td class=datalabel>IRB Expiration:&nbsp;</td><td class=dataline>{$head['DATA']['irbexpiration']}&nbsp;</td></tr>
-//    <tr><td class=datalabel>PFRP Approval Date:&nbsp;</td><td class=dataline>{$head['DATA']['approvalyear']}&nbsp;</td></tr>
-//    <tr><td class=datalabel>PFRP Approval Number:&nbsp;</td><td class=dataline>{$head['DATA']['pfcapprovalnumber']}&nbsp;</td></tr>
- //   <tr><td class=datalabel>PFRP Expiration Date:&nbsp;</td><td class=dataline>{$head['DATA']['pfcapprovalexpiration']}&nbsp;</td></tr>
-//    <tr><td colspan=2>Project Comments</td></tr>
-//    <tr><td colspan=2>{$head['DATA']['projectcomments']}</td></tr>
-//
-//    <tr><td colspan=2 class=projDspHeader>Contacts</td></tr>
-//    <tr><td class=datalabel>Investigator: </td><td class=dataline>{$piname}</td></tr>
-//    <tr><td class=datalabel>Investigator's Phone: </td><td class=dataline>{$piphone}</td></tr>
-//    <tr><td class=datalabel>Investigator's Email: </td><td class=dataline>{$piemail}</td></tr>
-//    <tr><td class=datalabel>Submitter's Name: </td><td class=dataline>{$subname}</td></tr>
-//    <tr><td class=datalabel>Submitter's Phone: </td><td class=dataline>{$subphone}</td></tr>
-//    <tr><td class=datalabel>Submitter's Email: </td><td class=dataline>{$subemail}</td></tr>
-//
-//    <tr><td colspan=2 class=projDspHeader>Questions Answered</td></tr>
-//    <tr><td colspan=2>{$innerAns}</td></tr>
-//    <tr><td colspan=2 class=projDspHeader>Project Doucments (Click to View)</td></tr>
-//    <tr><td colspan=2>{$innerDocs}</td></tr>
-//  </table>
-//  
-//  </td>
-//<td id=reviewPanel valign=top>
-//
-//{$reviewSide}
-//
-//</td>
-//</tr></table>
-//
-//<div id=modalBack></div>
-//<div id=pdfDisplay>    <table style="width: 79vw;height: 78vh;" border=0><tr><td align=right style="height: 2vh;"><span id=closeMod  onclick="closeModal();">&times;</span></td></tr><tr><td valign=top><div id=displayThisPDF>PDF</div></td></tr></table></div>
-//<div id=emailerDisplay><table style="width: 79vw;height: 78vh;" border=0><tr><td align=right style="height: 2vh;"><span id=closeMod2 onclick="closeModal();">&times;</span></td></tr><tr><td valign=top><div id=emailer>
-//
-//<table border=0>
-//<tr><td>Choose a recipient</td></tr>
-//<tr><td>{$emailSelect}</td></tr>
-//<tr><td><TEXTAREA id=emailMessage></TEXTAREA></td></tr>
-//<tr><td align=right><table id=pfrpSendButton onclick="sendReferalMessage();"><tr><td>Send</td></tr></table></td></tr>
-//</table>
-//
-//</div></td></tr></table></div>
-//
-//DSPTHIS;
-//} else {
-//  $m = json_decode($pHold['message'],true);  
-//  $dspThis = $m['MESSAGE'];
-//}
-////LOOKUP PROJECT BY ID    
-//$pageContent = <<<RTNTHIS
-//{$dspThis}
-//RTNTHIS;
-//  } else { 
-//  $pageContent = <<<RTNTHIS
-//NOT A VALID PROJECT NUMBER
-//RTNTHIS;
-//  }
+if ((int)$pHold['responseCode'] === 200) { 
+//{"responseCode":200,"message":"{\"MESSAGE\":\"\",\"ITEMS\":0,\"DATA\":{"completeind\":0,,,,,,,,\"statuses\":[{\"datastatus\":\"SUBMITTED\",\"statusmodifier\":\"\",\"statusdate\":\"06\\\/23\\\/2018 12:35\",\"lettercomments\":\"\"},{\"datastatus\":\"IN REVIEW\",\"statusmodifier\":\"\",\"statusdate\":\"06\\\/25\\\/2018 09:40\",\"lettercomments\":\"\"},{\"datastatus\":\"IN REVIEW\",\"statusmodifier\":\"\",\"statusdate\":\"06\\\/25\\\/2018 09:41\",\"lettercomments\":\"\"}]}}","datareturn":""} 
+    $head = $pHold['datareturn']; 
+    foreach($head['contacts'] as $conval) { 
+        switch($conval['contacttype']) { 
+          case 'SUBMITTER':
+              $subname = $conval['contactname'];
+              $subphone = $conval['phonenbr'];
+              $subemail = $conval['emailaddress'];
+              break;
+          case 'PROJECT-PI':
+              $piname = $conval['contactname'];
+              $piphone = $conval['phonenbr'];
+              $piemail = $conval['emailaddress'];
+             break;
+        } 
+    }
+
+    $innerAns = "<table border=0 style=\"width: 28vw;\">";
+    $qCount = 1;
+    foreach($head['questionanswers'] as $ans) { 
+      $innerAns .= "<tr><td valign=top style=\"border-bottom: 1px solid rgba({$this->color_zgrey},1);\">{$qCount}</td><td valign=top style=\"border-bottom: 1px solid rgba({$this->color_zgrey},1);\">{$ans['question']}</td><td valign=top style=\"border-bottom: 1px solid rgba({$this->color_zgrey},1);\">{$ans['answer']}</td></tr>";
+      $qCount += 1;    
+    }
+    $innerAns .= "</table>";
+
+    $innerDocs = "<table border=0 style=\"width: 28vw;\">";
+    $qCount = 1;
+    foreach($head['documents'] as $doc) { 
+      $innerDocs .= "<tr onclick=\"grabdocumentpdf('{$doc['directorydocumentname']}');\"><td style=\"border-bottom: 1px solid rgba({$this->color_zgrey},1);\">{$qCount}</td><td style=\"border-bottom: 1px solid rgba({$this->color_zgrey},1);\">{$doc['typeofdocument']}</td><td style=\"border-bottom: 1px solid rgba({$this->color_zgrey},1);\">({$doc['uploadedon']}-{$doc['uploadedby']})</td></tr>";
+      $qCount += 1;    
+    }
+    if (trim($head['projectpdf']) !== "") { 
+      $innerDocs .= "<tr onclick=\"grabdocumentpdf('{$head['DATA']['projectpdf']}');\"><td>{$qCount}</td><td>Project PDF</td><td>&nbsp;</td></tr>";
+    }
+    $innerDocs .= "</table>";
+
+    $decisionSelect = "<select id=pfrpDecision onchange=\"referReview(this.value);\"><option value=\"NA\">-</option>";
+    $actionHold = json_decode(callpfcrestapi("POST","https://pfcdata.chtneast.org/pfcapplication/pfrpactions",""), true);
+    
+    if ($actionHold['responseCode'] === 200) { 
+      $actionVals = $actionHold['datareturn'];
+      foreach($actionVals as $actionv) { 
+        $decisionSelect .= "<option value=\"{$actionv['codevalue']}\">{$actionv['menuvalue']}</option>";
+      } 
+    } else {
+      $decisionSelect .= "<option value=\"BADVALUE\">ERROR NO MENU FOUND IN SERVICE</option>";
+    }
+    $decisionSelect .= "</select>"; 
+
+    $emailSelect = "<select id=pfrpReferEmailList>";
+    $actionHold = json_decode(callpfcrestapi("POST","https://pfcdata.chtneast.org/pfcapplication/pfrpmemberemaillisting",""), true);
+    if ($actionHold['responseCode'] === 200) { 
+      $actionVals = $actionHold['datareturn'];
+      foreach($actionVals as $actionv) { 
+        $emailSelect .= "<option value=\"{$actionv['pfcmemberid']}\">{$actionv['membername']}</option>";
+      } 
+    } else {
+      $emailSelect .= "<option value=\"BADVALUE\">ERROR NO MENU FOUND IN SERVICE</option>";
+    }
+    $emailSelect .= "</select>"; 
+
+    $copySelect = "<select id=pfrpCopyMe><option value=\"NO\">NO</option><option value=\"YES\">YES</option></select>";
+
+//<tr><td><table><tr><td class=datalabel>Copy Me on Decision Email</td></tr><tr><td>{$copySelect}</td></tr></table></td><td align=right><table id=pfrpSaveButton onclick="saveReview();"><tr><td>Save</td></tr></table></td></tr>
+
+    $completeind = $head['completeind'];
+    if ((int)$completeind === 1) { 
+    $reviewSide = <<< REVIEWSIDE
+<table border=0><tr><td id=pfcreviewtitle>Pathology Feasibility Review </td></tr>
+<tr><td> 
+REVIEW HAS ALREADY BEEN COMPLETED.  THIS DISPLAY IS FOR REFERENCE ONLY.
+</td></tr></table>
+REVIEWSIDE;
+    } else { 
+    $reviewSide = <<< REVIEWSIDE
+<table border=0><tr><td id=pfcreviewtitle>Pathology Feasibility Review</td></tr>
+<tr><td> 
+<table border=0>
+<tr><td colspan=2 class=datalabel style="padding: 3vh 0 0 0;">Decision</td></tr>
+<tr><td colspan=2>{$decisionSelect}</td></tr>
+<tr><td colspan=2 class=datalabel style="padding: 3vh 0 0 0;">Comments to Include in Letter to Investigator</td></tr>
+<tr><td colspan=2><TEXTAREA id=txtLetterComments class=reviewcomments></TEXTAREA></td></tr>
+<tr><td colspan=2 class=datalabel style="padding: 3vh 0 0 0;">Internal PFRP Comments</td></tr>
+<tr><td colspan=2><TEXTAREA id=txtInternalComments class=reviewcomments></TEXTAREA></td></tr>
+<tr><td></td><td align=right><table id=pfrpSaveButton onclick="saveReview();"><tr><td>Save</td></tr></table></td></tr>
+</td></tr></table>
+REVIEWSIDE;
+    }
+        
+   $dspThis = <<< DSPTHIS
+<table border=0 id=reviewHoldingTbl>
+     <tr>
+  <td id=reviewSidePanel valign=top>
+  
+  <table border=0 id=projectDisplay>
+    <tr><td colspan=2 id=projDspProjectId>Project {$head['projectid']} <input type=hidden id=fldprojectidreference value={$head['projectid']}></td></tr>
+    <tr><td colspan=2 id=projDspProjectTitle>{$head['projecttitle']}</td></tr>
+
+    <tr><td colspan=2 class=projDspHeader>Details</td></tr>
+    <tr><td class=datalabel>Submission Date:&nbsp;</td><td class=dataline>{$head['submissiondate']}&nbsp;</td></tr> 
+    <tr><td class=datalabel>IRB Number:&nbsp;</td><td class=dataline>{$head['irbnbr']}&nbsp;</td></tr>
+    <tr><td class=datalabel>IRB Expiration:&nbsp;</td><td class=dataline>{$head['irbexpiration']}&nbsp;</td></tr>
+    <tr><td class=datalabel>PFRP Approval Date:&nbsp;</td><td class=dataline>{$head['approvalyear']}&nbsp;</td></tr>
+    <tr><td class=datalabel>PFRP Approval Number:&nbsp;</td><td class=dataline>{$head['pfcapprovalnumber']}&nbsp;</td></tr>
+    <tr><td class=datalabel>PFRP Expiration Date:&nbsp;</td><td class=dataline>{$head['pfcapprovalexpiration']}&nbsp;</td></tr>
+    <tr><td colspan=2>Project Comments</td></tr>
+    <tr><td colspan=2>{$head['projectcomments']}</td></tr>
+
+    <tr><td colspan=2 class=projDspHeader>Contacts</td></tr>
+    <tr><td class=datalabel>Investigator: </td><td class=dataline>{$piname}</td></tr>
+    <tr><td class=datalabel>Investigator's Phone: </td><td class=dataline>{$piphone}</td></tr>
+    <tr><td class=datalabel>Investigator's Email: </td><td class=dataline>{$piemail}</td></tr>
+    <tr><td class=datalabel>Submitter's Name: </td><td class=dataline>{$subname}</td></tr>
+    <tr><td class=datalabel>Submitter's Phone: </td><td class=dataline>{$subphone}</td></tr>
+    <tr><td class=datalabel>Submitter's Email: </td><td class=dataline>{$subemail}</td></tr>
+
+    <tr><td colspan=2 class=projDspHeader>Questions Answered</td></tr>
+    <tr><td colspan=2>{$innerAns}</td></tr>
+    <tr><td colspan=2 class=projDspHeader>Project Doucments (Click to View)</td></tr>
+    <tr><td colspan=2>{$innerDocs}</td></tr>
+  </table>
+  
+  </td>
+<td id=reviewPanel valign=top>
+
+{$reviewSide}
+
+</td>
+</tr></table>
+
+<div id=modalBack></div>
+<div id=pdfDisplay>    <table style="width: 79vw;height: 78vh;" border=0><tr><td align=right style="height: 2vh;"><span id=closeMod  onclick="closeModal();">&times;</span></td></tr><tr><td valign=top><div id=displayThisPDF>PDF</div></td></tr></table></div>
+<div id=emailerDisplay><table style="width: 79vw;height: 78vh;" border=0><tr><td align=right style="height: 2vh;"><span id=closeMod2 onclick="closeModal();">&times;</span></td></tr><tr><td valign=top><div id=emailer>
+
+<table border=0>
+<tr><td>Choose a recipient</td></tr>
+<tr><td>{$emailSelect}</td></tr>
+<tr><td><TEXTAREA id=emailMessage></TEXTAREA></td></tr>
+<tr><td align=right><table id=pfrpSendButton onclick="sendReferalMessage();"><tr><td>Send</td></tr></table></td></tr>
+</table>
+
+</div></td></tr></table></div>
+
+DSPTHIS;
+} else {
+  $m = json_decode($pHold['message'],true);  
+  $dspThis = $m['MESSAGE'];
+}
+//LOOKUP PROJECT BY ID    
+$pgContent .= <<<RTNTHIS
+{$dspThis}
+RTNTHIS;
+  } else { 
+  $pgContent = <<<RTNTHIS
+NOT A VALID PROJECT NUMBER
+RTNTHIS;
+  }
 } else {
 
   //BUILD STATUS PULL     
@@ -563,6 +562,7 @@ if ($statWS['responseCode'] === 200) {
 
 if (trim($rqstDetermine['status']) !== "") {
   $crd['qryStatus'] = urldecode($rqstDetermine['status']);
+  $crd['pennkey'] = pfccryptservice($usr);
   $dta['datapayload'] = json_encode($crd); 
   $passData = json_encode($dta);  
   $statList = json_decode(callpfcrestapi("POST","https://pfcdata.chtneast.org/pfcapplication/projectsbystatus",$passData), true);
@@ -618,7 +618,7 @@ $pgContent .= $cFooter;
 
 return array(
          "preamble" => htmlspecialchars($preamb)
-       , "head" => htmlspecialchars($head)
+       , "head" => htmlspecialchars($reviewhead)
        , "style" => htmlspecialchars($style)
        , "javascriptr" => $jvcontent
        , "body" => htmlspecialchars($pgContent)
