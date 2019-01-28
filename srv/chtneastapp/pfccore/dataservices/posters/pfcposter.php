@@ -301,10 +301,11 @@ function saveReview() {
    crd['internals'] = byId('txtInternalComments').value; 
 //   crd['copyme'] = byId('pfrpCopyMe').value;
    dta['datapayload'] = JSON.stringify(crd);
-   var passdata = JSON.stringify(dta); 
+   var passdata = JSON.stringify(dta);
+   console.log(passdata);
    var mlURL = "{$dtaTree}/pfcapplication/pfrpdecision";
    httpage.open("POST",mlURL,true);
-   httpage.setRequestHeader("pfc-user-token",usree);
+   httpage.setRequestHeader("pfc-token",usree);
    httpage.setRequestHeader("pfc-data-token",datakey);
     httpage.onreadystatechange = function () { 
        if (httpage.readyState === 4) {
@@ -345,12 +346,14 @@ function sendReferalMessage() {
    crd['msg'] = byId('emailMessage').value;
    dta['datapayload'] = JSON.stringify(crd);
    var passdata = JSON.stringify(dta);  
+   //console.log(passdata);
    var mlURL = "{$dtaTree}/pfcapplication/sendpfrpreferal";
    httpage.open("POST",mlURL,true);
-   httpage.setRequestHeader("pfc-user-token",usree);
+   httpage.setRequestHeader("pfc-token",usree);
    httpage.setRequestHeader("pfc-data-token",datakey);
    httpage.onreadystatechange = function () { 
        if (httpage.readyState === 4) {
+         
          switch (httpage.status) { 
            case 200:
                //Redirect Home
@@ -372,7 +375,6 @@ JAVASCRIPTR;
 
 $cHeader = self::topAndMenuBarMember($usr, "{$memberinfo['firstname']} {$memberinfo['lastname']}", "{$memberinfo['email']}" );
 $pgContent = $cHeader;
-
 
 parse_str(str_replace("?","", str_replace("-","",strtolower($rqst))), $rqstDetermine);    
 

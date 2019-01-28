@@ -423,7 +423,7 @@ function sendpfrpreferal($request, $passedData, $rUsr, $rSession) {
     $pDta = json_decode($passedData, true);
     $emlArr = json_decode($pDta['datapayload'], true);
     require(genAppFiles .  "/dataconn/sspdo.zck");
-
+    $rUsr = pfccryptservice($_SERVER['HTTP_PFC_TOKEN'],'d',false);
     $chkSQL = "SELECT pfcmemberid, memberemail FROM pfc.sys_pfcmember_pennkey where pfcpennkeyref = :pennkey";
     $chkR = $conn->prepare($chkSQL);
     $chkR->execute(array(':pennkey' => $rUsr));
@@ -434,7 +434,6 @@ function sendpfrpreferal($request, $passedData, $rUsr, $rSession) {
       $from = array();
       $from[] = $chkR->fetch(PDO::FETCH_ASSOC);
       $senderEmail = $from[0]['memberemail'];
-
       $recipChkSQL = "SELECT memberemail FROM pfc.sys_pfcmember_pennkey where pfcmemberid = :recipcode";
       $recipR = $conn->prepare($recipChkSQL);
       $recipR->execute(array(':recipcode' => $emlArr['recip']));
@@ -449,14 +448,12 @@ function sendpfrpreferal($request, $passedData, $rUsr, $rSession) {
           $this->responseCode = 500;
           $this->message = "NO PROJECT ID LISTED";
         }  else {
-
            $at = genAppFiles;
            $pPic = base64file( "{$at}/publicobj/graphics/psom_logo_blue.png", "PSOMLogo", "image", true, " style=\"width: 1.5in;\" ");
            $header = "<table border=0 style=\"width: 7.75in;\"><tr><td>{$pPic}</td><td style=\"text-align: center;font-size: 1.2vh;font-family: tahoma, arial; font-weight: bold;\">Pathology Feasibility Review Panel (PFRP)<br>PROJECT REFERAL EMAIL</td><td style=\"width: 1.5in;\">&nbsp;</td></tr></table>";
            $footer = <<<HTMLFOOT
 <table style="width: 720px;font-family: tahoma, arial; font-size: .8vh;padding-top: 50px;"><tr><td><center>Pathology Feasibility Review Panel (PFRP)<br>Hospital of the University of Pennsylvania<br>3400 Spruce Street, 6 FOUNDERS<br>Philadelphia, Pennsylvania 19104<br>(215) 662-4570</td></tr></table>
 HTMLFOOT;
-
         //Format Referal Email
         $emailBdy = <<<EMAILBODY
                 <table><tr><td>PFRP Project ({$emlArr['proj']}) has been referred to you by {$senderEmail}. Please DO NOT response to this email, but redirect all comments to the referenced email address.   Their comments are below:</td></tr>
@@ -466,30 +463,33 @@ EMAILBODY;
         $email = $header . $emailBdy . $footer;
         $notifyList = array();
         $notifyList[] = $recipEmail;
-
          $emlSQL = "insert into serverControls.emailthis (towhoaddressarray,sbjtline,msgbody,htmlind,wheninput, bywho) values(:recipArr,:subject,:htmlstuff,1,now(),:bywho)";
          $emlR = $conn->prepare($emlSQL);
-         $emlR->execute(array(":recipArr" => json_encode($notifyList), ":subject" => "PFRP REFERAL ({$emlArr['proj']})",":htmlstuff" => $email, ":bywho" => "PFRP-SYSTEM"));
-
-        $this->responseCode = 200;
-        $this->message = $emlArr['proj'];
+         $emlR->execute(array(":recipArr" => json_encode($notifyList), ":subject" => "PFRP REFERAL ({$emlArr['proj']})",":htmlstuff" => $email, ":bywho" => "PFRP-SYSTEM"));         
+         $this->responseCode = 200;
+         $this->message = "";
         }
       }
     }
-    $rtn = array("MESSAGE" => $this->message, "ITEMS" => $this->itemsFound, "DATA" => $this->rtnData);
-    $rows['statusCode'] = $this->responseCode;
-    $rows['data'] = $rtn;
-    return $rows;
 }
 
 function pfrpdecision($request, $passedData, $rUsr, $rSession) {
+    
+    ////START HERE 2019-01-29///////
+    //LETTERS FOR APPROVED PBRF and DENIAL not sending
+    
+    
+    
+    
+    
     $decDta = json_decode($passedData, true);
     $decArr = json_decode($decDta['datapayload'], true);
     $projid = (int)$decArr['proj'];
     $decisionid = $decArr['decision'];
     $lettercomments = $decArr['lettercomments'];
     $internalcomments = $decArr['internals'];
-    $copyme = $decArr['copyme'];
+    $rUsr = pfccryptservice( $_SERVER['HTTP_PFC_TOKEN'] , 'd' , false);
+//    $copyme = $decArr['copyme'];
     require(genAppFiles .  "/dataconn/sspdo.zck");
     $chkAppSQL = "SELECT pfcpennkeyref, memberfirstname, memberlastname, memberemail, ifnull(lettersignline,'') as lettersignline FROM pfc.sys_pfcmember_pennkey where allowqry = 1 and approver = 1 and pfcpennkeyref = :pennkey";
     $chkApp = $conn->prepare($chkAppSQL);
@@ -572,11 +572,11 @@ function pfrpdecision($request, $passedData, $rUsr, $rSession) {
         }
       }
     }
-
-    $rtn = array("MESSAGE" => $this->message, "ITEMS" => $this->itemsFound, "DATA" => $this->rtnData);
-    $rows['statusCode'] = $this->responseCode;
-    $rows['data'] = $rtn;
-    return $rows;
+    
+       //$this->message = "";
+       $this->itemsFound = 0;
+       $this->rtnData = $projid . " " . $decisionid . " " . $lettercomments . " " . $internalcomments . " " . $rUsr;
+       $this->responseCode = 200;
 }
 
 function getpfrpdocument($request, $passedData, $rUsr, $rSession) {
@@ -724,4 +724,322 @@ function pfcmember($loggedonUser) {
         $dtnRtn['pfcpennkey'] = $mR['pfcpennkeyref'];
     }
     return $dtnRtn;
+}
+
+function buildpfrletter($letterelements) { 
+  $ORAppPDF = "";
+  $at = genAppFiles;
+  require(genAppFiles .  "/dataconn/sspdo.zck");
+  $pPic = base64file( "{$at}/publicobj/graphics/psom_logo_blue.png", "PSOMLogo", "image", true, " style=\"width: 1.5in;\" ");
+  $projSQL = "SELECT projecttitle, irbNbr, date_format(irbexpiration,'%m/%d/%Y') as irbexpiration, ifnull(pfcapprovalnumber,'-') as pfcapprovalnumber, ifnull(pfcapprovalnumber,'') as pfcapprovalnumber, ifnull(date_format(pfcapprovalexpiration,'%m/%d/%Y'),'') as pfcapprovalexpiration, ifnull(pi.contactname,'') as contactname, pi.salutation, phn.metric as phonenbr, eml.metric as piemail FROM pfc.ut_projects pj left join (SELECT projcontid, projid, contactname, salutation FROM pfc.ut_projects_contacts where contacttype = 'PROJECT-PI') as pi on pj.projectid = pi.projid left join (SELECT contactid, metric FROM pfc.ut_projects_contacts_metrics where typeOfContMet = 'PHONE') phn on pi.projcontid = phn.contactid left join (SELECT contactid, metric FROM pfc.ut_projects_contacts_metrics where typeOfContMet = 'EMAIL') eml on pi.projcontid = eml.contactid where projectid = :projid"; 
+  $projR = $conn->prepare($projSQL);
+  $projR->execute(array(':projid' => $letterelements['projid']));
+  $projDta = array(); 
+  $projDta = $projR->fetch(PDO::FETCH_ASSOC); 
+ 
+  $reviewerSQL = "SELECT replace(lettersignline,'\n','<br>') as lettersignline, pfrptitle FROM pfc.sys_pfcmember_pennkey where pfcpennkeyref = :pennkey";
+  $reviewerR = $conn->prepare($reviewerSQL); 
+  $reviewerR->execute(array(':pennkey' => $letterelements['reviewer'])); 
+  $reviewer = array(); 
+  $reviewer = $reviewerR->fetch(PDO::FETCH_ASSOC); 
+
+  $header = <<<HEADER
+    <table border=0 style="width: 7.75in;font-family: Tahoma, arial; font-size: 1vh;">
+      <tr><td>{$pPic}</td></tr>
+      <tr><td align=right style="font-size: .8vh; border-top: 1px solid #000;"><b>Hospital of the University of Pennlvania</b><br>Department of Pathology &amp; Laboratory Medicine<br>Pathology Feasibility Review Panel<br>3400 Spruce Street, 568 DULLES<br>Philadelphia, Pennsylvania 19104<br>(215) 662-4570</td></tr>
+    </table>
+HEADER;
+
+  $today = date('D, F j, Y');
+  $now = date('Y-m-d H:i');
+  $projTitle = $projDta['projecttitle'];
+  $projPFCAppNbr = $projDta['pfcapprovalnumber'];
+  $projIRBNbr = $projDta['irbNbr'];
+  $projIRBExp = $projDta['irbexpiration'];
+  $pfcApprovalNbr = $projDta['pfcapprovalnumber'];
+  $pfcApprovalExp = $projDta['pfcapprovalexpiration'];
+  $piphone = $projDta['phonenbr'];
+  $piemail = $projDta['piemail'];
+  $refDsp = (trim($projPFCAppNbr) === "-") ? "" : trim($projPFCAppNbr);
+  $refDsp .= ($refDsp === "") ? trim($projIRBNbr) : "/{$projIRBNbr}";
+  $piname = explode(",",$projDta['contactname']);
+  $saluation = $projDta['salutation'];
+  $lcomments = (trim($letterelements['lettercomments']) === "") ? "" : "<tr><td style=\"padding: 1vh .5vw 0 .5vw; font-size: 1.2vh; text-align: justify; line-height: 1.8em; \">{$letterelements['lettercomments']}</td></tr>";
+//  $lcomments = "<tr><td> " . json_encode($letterelements) . "</td></tr>";
+  $reviewerSign = $reviewer['lettersignline'];
+  $reviewerPFRPTitle = $reviewer['pfrptitle'];
+  
+  switch ($letterelements['statusmodifier']) { 
+    case "Approved for OR Pickup":
+//APPRVAL LETTER - OR PICKUP  
+$bdy = <<<BODYTEXT
+        <table border=0 style="width: 7.75in;font-family: Tahoma, arial; font-size: 1vh;">
+          <tr><td style=" font-size: 1.2vh;">{$today}</td></tr>
+          <tr><td style="padding-top: 2vh;  font-size: 1.2vh;font-weight: bold;">RE: {$projTitle} [{$refDsp}]</td></tr>
+          <tr><td style="padding-top: 2vh; font-size: 1.2vh;">Dear {$saluation} {$piname[1]} {$piname[0]}:</td></tr>
+          <tr><td style="padding-top: 1vh; font-size: 1.2vh; text-align: justify; line-height: 1.8em;">The Pathology Feasibility Review Panel has reviewed your application for an exclusion to <i>Hospital of the University of Pennsylvania (HUP) Policy on Surgical Specimens</i>.  We are pleased to notify you that your request to obtain specimens from the HUP operating rooms has been approved.  We have attached the approved "Specimen Retrieval Form" for your use when collecting samples from the operating rooms.  </td></tr>
+          <tr><td style="padding-top: 1vh; font-size: 1.2vh; text-align: justify; line-height: 1.8em;">The new policy on release of these specimens for research indicates that the "Specimen Retrieval Form" must be completed and submitted to the OR staff prior to a sample being released to you.</td></tr>
+          <tr><td style="padding-top: 1vh; font-size: 1.2vh; text-align: justify; line-height: 1.8em;">Please be advised that all individuals that enter the perioperative areas must be aware of all necessary standard operating procedures (SOPs) and be properly attired.  </td></tr>
+          <tr><td style="padding-top: 1vh; font-size: 1.2vh; text-align: justify; line-height: 1.8em;">Please feel free to contact the Pathology Biospecimen Research Facility at (215) 662-4570, or email diane.mcgarvey@uphs.upenn.edu or valdivie@pennmedicine.upenn.edu, if you have any questions or concerns.</td></tr>
+          {$lcomments}
+          <tr><td style="padding-top: 1vh; font-size: 1.2vh;">Sincerely,</td></tr>
+          <tr><td style="padding-top: 3.5vh; font-size: 1.2vh;">{$reviewerSign}<br><b>{$reviewerPFRPTitle}</b></td></tr>
+          <tr><td style="font-size: .8vh; padding-top: 1vh;">{DIGITALLY SIGNED: {$now}}</td></tr>  
+        </table>
+
+BODYTEXT;
+
+$pdfFileName = "APP_OR_{$letterelements['projid']}.pdf";
+$docType = 'approvalletter';
+
+require(   genAppFiles . "/appsupport/bcodeLib/qrlib.php" ) ;
+$bcArr = array('PFRPApprovalNbr' => $pfcApprovalNbr, 'PFRPExpirationDate' => $pfcApprovalExp, 'IRB' => $projIRBNbr, 'IRBExp' => $projIRBExp);
+$codeContents = json_encode($bcArr);
+
+$pngAbsoluteFilePath = genAppFiles . "/tmp/" . date('YmdHis') . ".png";
+if (!file_exists($pngAbsoluteFilePath)) {
+  QRcode::png($codeContents, $pngAbsoluteFilePath, QR_ECLEVEL_L, 2);
+}
+$bcodedsp = base64file( $pngAbsoluteFilePath, "PFRPBcode", "image", true, " ");
+
+$ORForm = <<<ORTRNFRM
+<table border=0 style="width: 7.75in;height: 10in;font-family: Tahoma, arial; font-size: 1vh;">
+<tr><td>  
+       <table border=0 style="width: 7.75in;font-family: Tahoma, arial;">
+           <tr><td>{$bcodedsp}</td><td style="width: 2.5in; font-size: 12pt; font-weight: bold; border: 1px solid #000;background: rgba(211,211,211,1);text-align: center; padding: 8px;">Place Patient Label/Sticker Here</td></tr>
+       </table> 
+</td></tr>
+<tr><td style="padding-top: 30px;padding-bottom: 20px;text-align: center;"><span style="font-size: 16pt; font-weight: bold;">RESEARCH SPECIMEN RETRIEVAL FORM</span><br><span style="font-size: 14pt;font-style: oblique;">This form must be filled out by the <u>Sample Retriever</u> before any<br>specimens are released from the Operating Room.</span></td></tr>
+<tr><td>
+   <table border=0 style="width: 7.75in;font-family: Tahoma, arial; font-size: 11pt;">
+     <tr><td style="font-weight: bold; width: 2.8in; padding-top: 20px;">Technician/Retriever&apos;s Name (Print): </td><td style="border-bottom: 1px solid rgba(0,0,0,1);">&nbsp;</td></tr>
+     <tr><td style="font-weight: bold; width: 2.8in; padding-top: 20px;">Technician/Retriever&apos;s Phone: </td><td style="border-bottom: 1px solid rgba(0,0,0,1);">&nbsp;</td></tr>
+     <tr><td style="font-weight: bold; width: 2.8in; padding-top: 20px;">Technician/Retriever&apos;s Email: </td><td style="border-bottom: 1px solid rgba(0,0,0,1);">&nbsp;</td></tr>
+     <tr><td style="font-weight: bold; width: 2.8in; padding-top: 20px;">Technician/Retriever&apos;s Signature: </td><td style="border-bottom: 1px solid rgba(0,0,0,1);">&nbsp;</td></tr>
+   </table>
+</td></tr>
+<tr><td>
+   <table border=0 style="width: 7.75in;">
+      <tr><td style="font-size: 11pt; font-weight: bold; width: 1.8in;">Principal Investigator: </td><td style="border-bottom: 1px solid rgba(0,0,0,1);">{$saluation} {$piname[1]} {$piname[0]}</td>
+          <td style="font-size: 11pt; font-weight: bold; width: 1in;">Phone/Email: </td><td style="border-bottom: 1px solid rgba(0,0,0,1);">{$piphone} / {$piemail}</td></tr>
+   </table>
+</td></tr>
+<tr><td>
+   <table border=0 style="width: 7.75in;">
+      <tr><td style="font-size: 11pt; font-weight: bold; width: .9in;">Study Title: </td><td style="border-bottom: 1px solid rgba(0,0,0,1);">{$projTitle}</td></tr>
+   </table>
+</td></tr>
+
+<tr><td>
+   <table border=0 style="width: 7.75in;font-family: Tahoma, arial; font-size: 11pt;">
+      <tr><td style="font-weight: bold;">IRB # : Expiration </td><td style="border-bottom: 1px solid rgba(0,0,0,1);">{$projIRBNbr} : {$projIRBExp}</td><td style="font-weight: bold;">PFRP# : Expiration </td><td style="border-bottom: 1px solid rgba(0,0,0,1);">{$pfcApprovalNbr} : {$pfcApprovalExp}</td></tr>
+   </table>
+</td></tr>
+<tr><td>
+   <table border=0>
+      <tr><td style="width: .5in; height: .5in; border: 1px solid rgba(0,0,0,1);">&nbsp;</td><td style="font-size: 12pt;">Check this box if this is a Research-Only Procedure.  No other clinical specimens will result from this procedure.</td></tr>
+   </table>
+</td></tr>
+<tr><td style="font-size: 11pt; font-weight: bold;">Anatomic Site of Specimen(s) Retrieved (i.e. Duodenum, Esophagus, Heart Explant, etc): </td></tr>
+<tr><td style="height: .4in; border-bottom: 1px solid rgba(0,0,0,1);">&nbsp;</td></tr>
+<tr><td style="height: .4in; border-bottom: 1px solid rgba(0,0,0,1);">&nbsp;</td></tr>
+<tr><td><table style="width: 7.75in;"><tr><td style="height: .4in; width: 2.8in;font-size: 11pt; font-weight: bold;">Attending Surgeon/Proceduralist: </td><td style="border-bottom: 1px solid rgba(0,0,0,1);">&nbsp;</td></tr></table></td></tr>
+<tr><td>
+<table style="width: 7.75in;">
+<tr><td style="font-size: 11pt; font-weight: bold; width: 1in;">OR Room #: </td><td style="border-bottom: 1px solid rgba(0,0,0,1);">&nbsp;</td><td style="font-size: 11pt; font-weight: bold; width: 1in;">Pick-up Date: </td><td style="border-bottom: 1px solid rgba(0,0,0,1);">&nbsp;</td><td style="font-size: 11pt; font-weight: bold; width: 1in;">Pick-up Time:</td><td style="border-bottom: 1px solid rgba(0,0,0,1);">&nbsp;</td></tr>
+</table>
+</td></tr>
+<tr><td style="width: 7.75in;background: rgba(211,211,211,1); font-size: 10pt; font-style: italics; text-align: justify; padding: 15px; box-sizing: border-box; border: 1px solid rgba(0,0,0,1); line-height: 1.8em;">
+The original signed form MUST be sent to Surgical Pathology regardless of whether specimens are being placed in the OR Pathology Refrigerator.  Please place it in the bin labeled "Research Specimen Retrieval Forms" located in the OR Pathology Room.
+</td></tr>
+<tr><td>
+<table style="border-top: 1px solid rgba(211,211,211,1); width: 7.75in;"><tr><td>{$pPic}</td><td style="font-size: 9pt; text-align: right;">
+<b>Hospital of the University of Pennlvania</b><br>Department of Pathology &amp; Laboratory Medicine<br>Pathology Feasibility Review Panel<br>3400 Spruce Street, 568 DULLES<br>Philadelphia, Pennsylvania 19104<br>(215) 662-4570
+</td></tr>
+</table>
+ORTRNFRM;
+
+$ORDocFile = genAppFiles . "/tmp/ORDOC{$letterelements['projid']}.html";
+$ORDhandle = fopen($ORDocFile, 'w');
+$ORTdata = "<html><head></head><body>{$ORForm}</body></html>";
+fwrite($ORDhandle, $ORTdata);
+fclose;
+$ORAppPDF = genAppFiles . "/publicobj/documents/pfrp/ORD{$letterelements['projid']}.pdf";
+$linuxCmd = "wkhtmltopdf --load-error-handling ignore {$ORDocFile} {$ORAppPDF}";
+$output = shell_exec($linuxCmd);
+
+$docInsSQL = "insert into pfc.ut_projects_documents (projectid, typeofdocument, directorydocumentname, uploadedon, uploadedby) values (:projectid, :typeofdocument, :directorydocumentname, now(), 'AUTO-SYSTEM')";
+$docInsR = $conn->prepare($docInsSQL);
+$docInsR->execute(array(':projectid' => $letterelements['projid'], ':typeofdocument' => "ORTranFrm", ':directorydocumentname' => "ORD{$letterelements['projid']}.pdf"));
+
+      break;
+    case "Approved Use PBRF":
+//APROVAL LETTER - PBRF
+$bdy = <<<BODYTEXT
+
+        <table border=0 style="width: 7.75in;font-family: Tahoma, arial; font-size: 1vh;">
+          <tr><td style=" font-size: 1.2vh;">{$today}</td></tr>
+          <tr><td style="padding-top: 2vh;  font-size: 1.2vh;font-weight: bold;">RE: {$projTitle} [{$refDsp}]</td></tr>
+          <tr><td style="padding-top: 2vh; font-size: 1.2vh;">Dear {$saluation} {$piname[1]} {$piname[0]}:</td></tr>
+          <tr><td style="padding-top: 1vh; font-size: 1.2vh; text-align: justify; line-height: 1.8em;">The Pathology Feasibility Review Panel has reviewed your application to obtain research samples from surgical specimens.  </td></tr>
+          <tr><td style="padding-top: 1vh; font-size: 1.2vh; text-align: justify; line-height: 1.8em;">Your study is not applicable for an exclusion to Hospital of the University of Pennsylvania (HUP) policy, as the specimens that you intend to collect for research purposes must be submitted to Surgical Pathology before any research material may be released.  We have approved your request to obtain specimens; however, these speicmens must be obtained from the Pathology Biospecimen Research Facility (PBRF). </td></tr>
+          <tr><td style="padding-top: 1vh; font-size: 1.2vh; text-align: justify; line-height: 1.8em;">Please make arrangements with the PBRF by contaacting either Diane McGarvey (215) 662 4570 (diane.mcgarvey@uphs.upenn.edu) or Fred Valdisieso (215) 615-4744 (federico.valdisieso@uphs.upenn.edu) regarding the collection of these materials </td></tr>
+          {$lcomments}
+          <tr><td style="padding-top: 1vh; font-size: 1.2vh;">Sincerely,</td></tr>
+          <tr><td style="padding-top: 3.5vh; font-size: 1.2vh;">{$reviewerSign}<br><b>{$reviewerPFRPTitle}</b></td></tr>
+          <tr><td style="font-size: .8vh; padding-top: 1vh;">{DIGITALLY SIGNED: {$now}}</td></tr>  
+        </table>
+
+BODYTEXT;
+$pdfFileName = "APP_PBRF_{$letterelements['projid']}.pdf";
+$docType = 'approvalletter';
+        break; 
+    case "Denied":
+//DENIED LETTER
+$bdy = <<<BODYTEXT
+
+        <table border=0 style="width: 7.75in;font-family: Tahoma, arial; font-size: 1vh;">
+          <tr><td style=" font-size: 1.2vh;">{$today}</td></tr>
+          <tr><td style="padding-top: 2vh;  font-size: 1.2vh;font-weight: bold;">RE: {$projTitle} [{$refDsp}]</td></tr>
+          <tr><td style="padding-top: 2vh; font-size: 1.2vh;">Dear {$saluation} {$piname[1]} {$piname[0]}:</td></tr>
+          <tr><td style="padding-top: 1vh; font-size: 1.2vh; text-align: justify; line-height: 1.8em;">The Pathology Feasibility Review Panel (PFRP) has reviewed your application for an exclusion to the Hospital of the University of Pennsylvania (HUP) policy on surgical specimens.  The specimens that you requested for research purposes must be submitted to pathology before any research material may be collected.  At this time, we cannot grant your study permission to obtain the requested biosamples.  </td></tr>
+          {$lcomments}
+          <tr><td style="padding-top: 1vh; font-size: 1.2vh; text-align: justify; line-height: 1.8em;">We encourage you to modify your biosample requirements and resubmit an application to the panel.</td></tr>
+          <tr><td style="padding-top: 1vh; font-size: 1.2vh; text-align: justify; line-height: 1.8em;">Please feel free to contact the PFRP by contacting Diane McGarvey at (215) 662-4570 (diane.mcgarvey@uphs.upenn.edu) or Federico Valdivieso (215) 662-4744 (valdivie@pennmedicine.upenn.edu) if you have any further questions or concerns.  </td></tr>
+          <tr><td style="padding-top: 1vh; font-size: 1.2vh;">Sincerely,</td></tr>
+          <tr><td style="padding-top: 3.5vh; font-size: 1.2vh;">{$reviewerSign}<br><b>{$reviewerPFRPTitle}</b></td></tr>
+          <tr><td style="font-size: .8vh; padding-top: 1vh;">{DIGITALLY SIGNED: {$now}}</td></tr>  
+        </table>
+
+BODYTEXT;
+$pdfFileName = "APP_DENIAL_{$letterelements['projid']}.pdf";
+$docType = 'deniedletter';
+        break; 
+    default:
+
+  }
+
+
+$htmldoc = $header . $bdy;
+$docFile = genAppFiles . "/tmp/letter{$letterelements['projid']}.html";
+$handle = fopen($docFile, 'w');
+$data = "<html><head></head><body>{$htmldoc}</body></html>";
+fwrite($handle, $data);
+fclose;
+$appPDF = genAppFiles . "/publicobj/documents/pfrp/{$pdfFileName}";
+$linuxCmd = "wkhtmltopdf --load-error-handling ignore {$docFile} {$appPDF}";
+$output = shell_exec($linuxCmd);
+
+$docInsSQL = "insert into pfc.ut_projects_documents (projectid, typeofdocument, directorydocumentname, uploadedon, uploadedby) values (:projectid, :typeofdocument, :directorydocumentname, now(), 'AUTO-SYSTEM')";
+$docInsR = $conn->prepare($docInsSQL);
+$docInsR->execute(array(':projectid' => $letterelements['projid'], ':typeofdocument' => $docType, ':directorydocumentname' => $pdfFileName));
+
+//EMAIL IT HERE
+//$ORAppPDF = OR PICKUP FORM
+
+$emailList = array($piemail, "zacheryv@mail.med.upenn.edu");
+if (trim($ORAppPDF) !== "") { 
+  //EMAIL ATTACHMENT
+  $emlInsSQL = "insert into serverControls.emailthis (towhoaddressarray, sbjtline, msgbody, srverattachment, attachmentname, htmlind, wheninput, bywho) values (:towhoaddressarray, :sbjtline, :msgbody, :srverattachment, :attachmentname, 1, now(), 'PFRP-APPLICATION')";
+  $emlR = $conn->prepare($emlInsSQL); 
+  $projectdsp = substr(('000000' . $letterelements['projid']),-6);
+  $emlR->execute(array(':towhoaddressarray' => json_encode($emailList), ':sbjtline' => "PFRP PROJECT DECISION ({$projectdsp})", ':msgbody' => $htmldoc, ':srverattachment' => $ORAppPDF, ':attachmentname' => 'OR PICKUP FORM'));
+} else { 
+//EMAIL ONLY
+  $emlInsSQL = "insert into serverControls.emailthis (towhoaddressarray, sbjtline, msgbody, srverattachment, attachmentname, htmlind, wheninput, bywho) values (:towhoaddressarray, :sbjtline, :msgbody, 1, now(), 'PFRP-APPLICATION')";
+  $emlR = $conn->prepare($emlInsSQL); 
+  $projectdsp = substr(('000000' . $letterelements['projid']),-6);
+  $emlR->execute(array(':towhoaddressarray' => json_encode($emailList), ':sbjtline' => "PFRP PROJECT DECISION ({$projectdsp})",':msgbody' => $htmldoc,));
+}
+
+return  "LETTER FOR PROJECT {$letterelements['projid']}";
+}
+
+
+
+
+
+
+
+
+
+
+
+
+function buildpfrpapplicationpdf($prjVal, $projectid, $pennkey) { 
+  $at = genAppFiles;
+  require(genAppFiles .  "/dataconn/sspdo.zck");
+  $pPic = base64file( "{$at}/publicobj/graphics/psom_logo_blue.png", "PSOMLogo", "image", true, " style=\"width: 1.5in;\" ");
+  $header = "<table border=0 style=\"width: 7.75in;\"><tr><td>{$pPic}</td><td style=\"text-align: center;font-size: 1.2vh;font-family: tahoma, arial; font-weight: bold;\">Pathology Feasibility Review Panel (PFRP)<br>Application Submission</td><td style=\"width: 1.5in;\">&nbsp;</td></tr></table>";
+  $dspProjId = substr(('000000' . $projectid), -6);
+  $usrSQL = "SELECT projectUserId FROM pfc.ut_projectUsers where pennkey = :pennkey";
+  $usrR = $conn->prepare($usrSQL); 
+  $usrR->execute(array(':pennkey' => $pennkey)); 
+  $usr = $usrR->fetch(PDO::FETCH_ASSOC);
+  $usrpfrpid = ("PFRP-" . substr(("0000" .  $usr['projectUserId']), -4));
+  $subTime = date('m/d/Y H:i:s');
+//{\"fldProjecTitle\":\"\",\"fldprojectirbnbr\":\"\",\"fldprojectirbexp\":\"\",\"fldprojectsubmitter\":\"\",\"fldprojectsubmiton\":\"\",\"frmcontactsubmitterfname\":\"\",\"frmcontactsubmitterlname\":\"\",\"frmcontactsubmitterphone\":\"\",\"frmcontactsubmitteremail\":\"\",\"frmcontactpifname\":\"\",\"frmcontactpilname\":\"\",\"fldPISalutations\":\"\",\"frmcontactpiphone\":\"\",\"frmcontactpiemail\":\"\",\"fldAnswerIdqstnOne\":\"NO\",\"fldAnswerIdqstnTwo\":\"NO\",\"fldAnswerIdqstnThree\":\"NO\",\"fldAnswerIdqstnFour\":\"NO\",\"docPROJECT-PROTOCOL\":\"SPECIFICATION(1).pdf\",\"btoPROJECT-PROTOCOL\":
+   //IRB-APPROVAL
+   //PROJECT-PROTOCOL
+   //CONSENT-FORM
+   //ADDITIONAL-DOCUMENT
+//TODO:  Make Questions Dynamic!!
+$htmlBody = <<<HTMLBODY
+<table border=0 style="width: 720px"><tr><td align=right><table style="font-family: tahoma, arial; font-size: 1vh;"><tr><td><b>User</b>: </td><td>{$pennkey} / {$usrpfrpid}&nbsp;</td><td style="border-left: 1px solid #000054;">&nbsp;<b>PFRP Project #</b>: </td><td>{$dspProjId}</td></tr></table> </td></tr></table>
+<table border=0 style="width: 720px">
+<tr><td style="font-family: tahoma, arial; font-size: 1.3vh; font-weight: bold; border-bottom: 1px solid #000054;">Project</td></tr>
+<tr><td style="font-family: tahoma, arial; font-size: 1vh;padding: 5px;">{$prjVal['fldProjecTitle']}</td></tr>
+<tr><td><table><tr><td style="font-family: tahoma, arial; font-size: 1vh; font-weight: bold;">IRB #:&nbsp;</td><td style="font-family: tahoma, arial; font-size: 1vh;">{$prjVal['fldprojectirbnbr']}&nbsp;&nbsp;&nbsp;</td><td style="font-family: tahoma, arial; font-size: 1vh; font-weight: bold;">IRB Expiry:&nbsp;</td><td style="font-family: tahoma, arial; font-size: 1vh;">{$prjVal['fldprojectirbexp']}&nbsp;&nbsp;&nbsp;</td><td style="font-family: tahoma, arial; font-size: 1vh; font-weight: bold;">PFRP Submission Date:&nbsp;</td><td style="font-family: tahoma, arial; font-size: 1vh;">{$subTime}</td></tr></table> </td></tr>
+<tr><td style="font-family: tahoma, arial; font-size: 1.3vh; font-weight: bold;padding-top: 8px;">Application Questions</td></tr>
+<tr><td>
+<table border=0 style="font-family: tahoma, arial; font-size: 1vh;">
+<tr><td valign=top style="border-left: 1px solid #ccc; border-bottom: 1px solid #ccc;"><b>1.</b></td><td valign=top style="border-bottom: 1px solid #ccc;">Will you be using human tissue in research?</td><td valign=top style="border-bottom: 1px solid #ccc;">{$prjVal['fldAnswerIdqstnOne']}</td></tr>
+<tr><td valign=top style="border-left: 1px solid #ccc; border-bottom: 1px solid #ccc;"><b>2.</b></td><td valign=top style="border-bottom: 1px solid #ccc;">Could the human tissue obtained from clinical procedures be used for research without compromising diagnosis or patient care?</td><td valign=top style="border-bottom: 1px solid #ccc;">{$prjVal['fldAnswerIdqstnTwo']}</td></tr>
+<tr><td valign=top style="border-left: 1px solid #ccc; border-bottom: 1px solid #ccc;"><b>3.</b></td><td valign=top style="border-bottom: 1px solid #ccc;">Will this project require a source of human tissue from a research-only procedure, with no clinical specimens being submitted to pathology?</td><td valign=top style="border-bottom: 1px solid #ccc;">{$prjVal['fldAnswerIdqstnThree']}</td></tr>
+<tr><td valign=top style="border-left: 1px solid #ccc; border-bottom: 1px solid #ccc;"><b>4.</b></td><td valign=top style="border-bottom: 1px solid #ccc;">Will this project require the collection of human material(s) directly from the operating room?</td><td valign=top style="border-bottom: 1px solid #ccc;">{$prjVal['fldAnswerIdqstnFour']}</td></tr>
+</table>
+</td></tr>
+<tr><td style="font-family: tahoma, arial; font-size: 1.3vh; font-weight: bold;padding-top: 8px;">Uploaded Documents</td></tr>
+<tr><td>
+<table border=0 style="font-family: tahoma, arial; font-size: 1vh;">
+<tr><td valign=top style="border-left: 1px solid #ccc; border-bottom: 1px solid #ccc;"><b>1.</b></td><td valign=top style="border-bottom: 1px solid #ccc;">PROJECT-PROTOCOL</td><td valign=top style="border-bottom: 1px solid #ccc;">{$prjVal['docPROJECT-PROTOCOL']}</td></tr>
+<tr><td valign=top style="border-left: 1px solid #ccc; border-bottom: 1px solid #ccc;"><b>2.</b></td><td valign=top style="border-bottom: 1px solid #ccc;">IRB-APPROVAL</td><td valign=top style="border-bottom: 1px solid #ccc;">{$prjVal['docIRB-APPROVAL']}</td></tr>
+<tr><td valign=top style="border-left: 1px solid #ccc; border-bottom: 1px solid #ccc;"><b>3.</b></td><td valign=top style="border-bottom: 1px solid #ccc;">CONSENT-FORM</td><td valign=top style="border-bottom: 1px solid #ccc;">{$prjVal['docCONSENT-FORM']}</td></tr>
+<tr><td valign=top style="border-left: 1px solid #ccc; border-bottom: 1px solid #ccc;"><b>4.</b></td><td valign=top style="border-bottom: 1px solid #ccc;">ADDITIONAL-DOCUMENTATION</td><td valign=top style="border-bottom: 1px solid #ccc;">{$prjVal['docADDITIONAL-DOCUMENT']}</td></tr>
+</table>
+</td></tr>
+<tr><td style="font-family: tahoma, arial; font-size: 1.3vh; font-weight: bold;padding-top: 8px;">Additional Comments</td></tr>
+<tr><td style="font-family: tahoma, arial; font-size: 1vh;padding: 5px;">{$prjVal['frmprojectcomments']}&nbsp;</td></tr>
+</table>
+<table style="font-family: tahoma, arial; font-size: 1vh;">
+<tr><td colspan=2 style="font-family: tahoma, arial; font-size: 1.3vh; font-weight: bold;padding-top: 8px;">Submitter</td></tr>
+<tr><td><b>Name</b>:&nbsp;</td><td>{$prjVal['frmcontactsubmitterlname']}, {$prjVal['frmcontactsubmitterfname']} ({$pennkey})&nbsp;</td></tr>
+<tr><td><b>Phone</b>:&nbsp;</td><td>{$prjVal['frmcontactsubmitterphone']}&nbsp;</td></tr> 
+<tr><td><b>Email</b>:&nbsp;</td><td>{$prjVal['frmcontactsubmitteremail']}&nbsp;</td></tr> 
+<tr><td colspan=2 style="font-family: tahoma, arial; font-size: 1.3vh; font-weight: bold;padding-top: 8px;">Principal Investigator</td></tr>
+<tr><td><b>Name</b>:&nbsp;</td><td>{$prjVal['frmcontactpilname']}, {$prjVal['frmcontactpifname']}&nbsp;</td></tr>
+<tr><td><b>Phone</b>:&nbsp;</td><td>{$prjVal['frmcontactpiphone']}&nbsp;</td></tr> 
+<tr><td><b>Email</b>:&nbsp;</td><td>{$prjVal['frmcontactpiemail']}&nbsp;</td></tr> 
+</table>
+<p>
+HTMLBODY;
+$footer = <<<HTMLFOOT
+<table style="width: 720px;font-family: tahoma, arial; font-size: .8vh;"><tr><td><center>Pathology Feasibility Review Panel (PFRP)<br>Hospital of the University of Pennsylvania<br>3400 Spruce Street, 6 FOUNDERS<br>Philadelphia, Pennsylvania 19104<br>(215) 662-4570</td></tr></table>
+HTMLFOOT;
+$htmldoc = <<<HTMLDOC
+<table border=0 style="width: 720px"><tr><td style="border-bottom: 2px solid #000054;">{$header}</td></tr><tr><td>{$htmlBody}</td></tr><tr><td style="border-top: 1px solid #000054;text-align: center;">{$footer}</td></tr></table>
+HTMLDOC;
+$docFile = genAppFiles . "/tmp/projApp{$projectid}.html";
+$handle = fopen($docFile, 'w');
+$data = "<html><head></head><body>{$htmldoc}</body></html>";
+fwrite($handle, $data);
+fclose;
+$appFileName = "projectApplication{$projectid}.pdf";
+$appPDF = genAppFiles . "/publicobj/documents/pfrp/{$appFileName}";
+$linuxCmd = "wkhtmltopdf --load-error-handling ignore {$docFile} {$appPDF}";
+$output = shell_exec($linuxCmd);
+$updSQL = "update pfc.ut_projects set projectPDF = :pdfFileName where projectid = :projectid";
+$uR = $conn->prepare($updSQL); 
+$uR->execute(array(':pdfFileName' => $appFileName, ':projectid' => $projectid));
+return $htmldoc;
 }
