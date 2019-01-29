@@ -92,7 +92,7 @@ if ( strtoupper($method) !== "POST" && strtoupper($method) !== "OPTIONS" ) {
     echo json_encode(array('responseCode' => $responseCode,'message' => $msg, 'datareturn' => $data));
 
   } else { 
-
+        
       //PFC APPLICATION FILES
       switch (trim($request[1])) {
         case 'pfcapplication':
@@ -101,10 +101,13 @@ if ( strtoupper($method) !== "POST" && strtoupper($method) !== "OPTIONS" ) {
           $responseCode = 401;
           $msg = "";
           $itemsfound = 0;
-          $datareturn = "";                 
+          $datareturn = "";        
+
           //THESE ARE DATA INTERFACES          
           require(genAppFiles . "/dataservices/posters/pfcapplication.php");
+
           $doer = new pfcdataapplication($originalRequest, $passedPayLoad);
+                             
           $responseCode = $doer->responseCode;
           $itemsfound = $doer->itemsFound;
           $msg = $doer->message;

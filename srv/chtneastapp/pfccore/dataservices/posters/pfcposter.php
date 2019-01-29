@@ -303,6 +303,8 @@ function saveReview() {
    dta['datapayload'] = JSON.stringify(crd);
    var passdata = JSON.stringify(dta);
    console.log(passdata);
+   console.log(usree);
+   console.log(datakey);
    var mlURL = "{$dtaTree}/pfcapplication/pfrpdecision";
    httpage.open("POST",mlURL,true);
    httpage.setRequestHeader("pfc-token",usree);
@@ -314,7 +316,8 @@ function saveReview() {
           case 200:
 //               //Redirect Home
                alert('Decision Saved.  Email Sent.  You will be redirected back to the home screen.');
-               window.location = "{$pfcsecure}";
+              // window.location = "{$pfcsecure}";
+              console.log(httpage.responseText);
             break; 
            default: 
              var rcd = httpage.responseText;

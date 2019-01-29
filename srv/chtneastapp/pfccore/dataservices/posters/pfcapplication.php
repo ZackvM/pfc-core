@@ -7,35 +7,50 @@ class pfcdataapplication {
   public $itemsFound = 0;
   public $rtnData = array();
   
+  
   function __construct() { 
     $args = func_get_args(); 
     $nbrofargs = func_num_args(); 
+  
+    
+    
     if (trim($args[0]) === "") { 
         //ERROR
     } else { 
         $request = explode("/",$args[0]);
+        
         if (class_exists($request[1], false)) { 
+
           $cls = $request[1];
           if (trim($request[2]) === "") { 
               //ERROR
           } else {  
-            if (method_exists($cls, $request[2])) {   
-                $doer = new pfcapplication();
+               $this->rtnData = $request[2];
+            if (method_exists($cls, $request[2] )) {   
+
+                $dpp = new pfcapplication();
                 $funcName = $request[2]; 
-                $returnData = $doer->$funcName( $args[0] , $args[1] );
-                $this->responseCode = $doer->responseCode;
-                $this->message = $doer->message;
-                $this->itemsFound = $doer->itemsFound;
-                $this->rtnData = $doer->rtnData;
+                $z = $dpp->$funcName( $args[0] , $args[1] ,"" ,"" );
+
+                $this->responseCode = $dpp->responseCode;
+                $this->message = $dpp->message;
+                $this->itemsFound = $dpp->itemsFound;
+                $this->rtnData = $dpp->rtnData;
                 //$this->message = "{$funcName}";
             } else { 
-              //REQUESTED METHOD DOES NOT EXIST
+//              //REQUESTED METHOD DOES NOT EXIST
+                $this->responseCode = 500;
+                $this->message = "METHOD DOES NOT EXIST";
+                $this->itemsFound = 0;
+                $this->rtnData = "ZACK WAS HERE";
             }
           }
         } else { 
           //REQUESTED CLASS DOES NOT EXIST
+            
         }
     }
+    
   }
   
   
@@ -48,7 +63,7 @@ class pfcapplication {
   public $itemsFound = 0;
   public $rtnData = array();
   
-  function pfrpmemberemaillisting($request) { 
+function pfrpmemberemaillisting($request) { 
       $rtnData = array();
       require(genAppFiles . "/dataconn/sspdo.zck");
       $emlSQL = "SELECT pfcmemberid, concat(ifnull(memberlastname,''),', ', ifnull(memberfirstname,''), ' (', ifnull(pfrptitle,''), ')') as membername FROM pfc.sys_pfcmember_pennkey order by memberlastname";
@@ -64,7 +79,7 @@ class pfcapplication {
       $this->rtnData = $rtnData;
    }
   
-  function pfrpactions($request) {
+function pfrpactions($request) {
       //TODO: THIS FUNCTION IS THE GLOBALMENU FUNCTION FROM DATACHTNEAST AND SHOULD REALLY TO A HEADER FUNCTION OF ITS OWN
      $rows = array(); 
      $rParts = explode("/", $request); 
@@ -477,54 +492,60 @@ function pfrpdecision($request, $passedData, $rUsr, $rSession) {
     
     ////START HERE 2019-01-29///////
     //LETTERS FOR APPROVED PBRF and DENIAL not sending
-    
-    
-    
-    
-    
+       $rUsr = pfccryptservice($_SERVER['HTTP_PFC_TOKEN'],'d',false);       
+       $this->message = $passedData;
+       
     $decDta = json_decode($passedData, true);
     $decArr = json_decode($decDta['datapayload'], true);
     $projid = (int)$decArr['proj'];
     $decisionid = $decArr['decision'];
     $lettercomments = $decArr['lettercomments'];
     $internalcomments = $decArr['internals'];
-    $rUsr = pfccryptservice( $_SERVER['HTTP_PFC_TOKEN'] , 'd' , false);
-//    $copyme = $decArr['copyme'];
+
+
     require(genAppFiles .  "/dataconn/sspdo.zck");
     $chkAppSQL = "SELECT pfcpennkeyref, memberfirstname, memberlastname, memberemail, ifnull(lettersignline,'') as lettersignline FROM pfc.sys_pfcmember_pennkey where allowqry = 1 and approver = 1 and pfcpennkeyref = :pennkey";
     $chkApp = $conn->prepare($chkAppSQL);
     $chkApp->execute(array(':pennkey' => $rUsr));
+      
     if ($chkApp->rowCount() < 1) {
       $this->responseCode = 403;
       $this->message = "USER IS NOT ALLOWED TO PERFORM THIS ACTION";
       $this->itemsFound = 0;
     } else {
+   
       $chkProjStsSQL = "SELECT * FROM pfc.ut_projects where completeind = 0 and projectid = :projid";
       $chkProjStsR = $conn->prepare($chkProjStsSQL);
       $chkProjStsR->execute(array(':projid' => $projid));
+
       if ($chkProjStsR->rowCount() < 1) {
         $this->responseCode = 404;
         $this->message = "Project is already marked complete";
         $this->itemsFound = 0;
       } else {
+
         $decSQL = "SELECT reviewaction, projectstatus, furtheractionind, completionactionind FROM pfc.appdata_project_reviewerstatus where actionid = :decision";
         $decR = $conn->prepare($decSQL);
         $decR->execute(array(':decision' => $decisionid));
+        
         if ($decR->rowCount() < 1) {
           $this->responseCode = 500;
           $this->message = "DECISION METRIC NOT FOUND";
           $this->itemsFound = 0;
         } else {
+
           $decision = array();
           $decision = $decR->fetch(PDO::FETCH_ASSOC);
           $statusmodifier = $decision['reviewaction'];
           $datastatus = $decision['projectstatus'];
           $completeind = $decision['completionactionind'];
+          
           if ((int)$completeind <> 1) {
             $this->responseCode = 500;
             $this->message = "REVIEW DECISION MUST BE A COMPLETION STATUS";
             $this->itemsFound = 0;
           } else {
+              
             $statUpdSQL = "insert into pfc.appdata_project_statuses (datastatus, statusmodifier, furtherinfo, lettercomments, projid, applicationmodule, statusby, statusdate) values(:datastatus, :statusmodifier, :furtherinfo, :lettercomments, :projid, 'PFRP-REVIEW-PAGE-STATUS-UPDATE', :statusby, now())";
             $statUpdR = $conn->prepare($statUpdSQL);
             $statUpdR->execute(array(
@@ -535,8 +556,8 @@ function pfrpdecision($request, $passedData, $rUsr, $rSession) {
               , ':projid' => $projid
               , ':statusby' => $rUsr
             ));
+            
             if ($datastatus === "REVIEW COMPLETE (APPROVED)") {
-
               $yrApprSQL = "SELECT count(1) as yrapprove FROM pfc.ut_projects where approvalyear = :appyear";
               $yrApprR = $conn->prepare($yrApprSQL);
               $cYear = (int)date('y');
@@ -550,33 +571,38 @@ function pfrpdecision($request, $passedData, $rUsr, $rSession) {
 
               $letterElements = array('projid' => $projid, 'datastatus' => $datastatus, 'statusmodifier' => $statusmodifier, 'reviewer' => $rUsr, 'lettercomments' => trim($lettercomments));
               $letterTxt = buildpfrletter($letterElements);
-              $this->message = "FINISHED";
+              $this->message = "FINISHED " . $letterTxt;
+              $this->rtnData = $letterElements;
+              $this->itemsFound = 0;
               //BUILD LETTERS (APPROVAL) X
               //BUILD PICKUP FORM X
               //UPDATE PROJECT DOCUMENTS X
               //EMAIL LETTER AND PICKUP FORM TO SUBMITTER X
               $this->responseCode = 200;
+              
             } else {
+                
               $updProjSQL = "update pfc.ut_projects set completeind = 1 where projectid = :projid";
               $updProjR = $conn->prepare($updProjSQL);
               $updProjR->execute(array(':projid' => $projid));
               $letterElements = array('projid' => $projid, 'datastatus' => $datastatus, 'statusmodifier' => $statusmodifier, 'reviewer' => $rUsr, 'lettercomments' => trim($lettercomments));
               $letterTxt = buildpfrletter($letterElements);
-              $this->message = "FINISHED";
+              $this->message = "FINISHED " . $letterTxt ;
+              $this->rtnData = $letterElements;
+              $this->itemsFound = 0;
               //BUILD LETTERS (DENIAL) X
               //UPDATE PROJECT DOCUMENTS X
               //EMAIL LETTER TO INVESTIGATOR SUBMITTER X
               $this->responseCode = 200;
             }
-          }
+         }
+
         }
+
       }
+
     }
-    
-       //$this->message = "";
-       $this->itemsFound = 0;
-       $this->rtnData = $projid . " " . $decisionid . " " . $lettercomments . " " . $internalcomments . " " . $rUsr;
-       $this->responseCode = 200;
+
 }
 
 function getpfrpdocument($request, $passedData, $rUsr, $rSession) {
@@ -731,6 +757,7 @@ function buildpfrletter($letterelements) {
   $at = genAppFiles;
   require(genAppFiles .  "/dataconn/sspdo.zck");
   $pPic = base64file( "{$at}/publicobj/graphics/psom_logo_blue.png", "PSOMLogo", "image", true, " style=\"width: 1.5in;\" ");
+   
   $projSQL = "SELECT projecttitle, irbNbr, date_format(irbexpiration,'%m/%d/%Y') as irbexpiration, ifnull(pfcapprovalnumber,'-') as pfcapprovalnumber, ifnull(pfcapprovalnumber,'') as pfcapprovalnumber, ifnull(date_format(pfcapprovalexpiration,'%m/%d/%Y'),'') as pfcapprovalexpiration, ifnull(pi.contactname,'') as contactname, pi.salutation, phn.metric as phonenbr, eml.metric as piemail FROM pfc.ut_projects pj left join (SELECT projcontid, projid, contactname, salutation FROM pfc.ut_projects_contacts where contacttype = 'PROJECT-PI') as pi on pj.projectid = pi.projid left join (SELECT contactid, metric FROM pfc.ut_projects_contacts_metrics where typeOfContMet = 'PHONE') phn on pi.projcontid = phn.contactid left join (SELECT contactid, metric FROM pfc.ut_projects_contacts_metrics where typeOfContMet = 'EMAIL') eml on pi.projcontid = eml.contactid where projectid = :projid"; 
   $projR = $conn->prepare($projSQL);
   $projR->execute(array(':projid' => $letterelements['projid']));
@@ -768,11 +795,15 @@ HEADER;
 //  $lcomments = "<tr><td> " . json_encode($letterelements) . "</td></tr>";
   $reviewerSign = $reviewer['lettersignline'];
   $reviewerPFRPTitle = $reviewer['pfrptitle'];
-  
+
+
+
   switch ($letterelements['statusmodifier']) { 
     case "Approved for OR Pickup":
+
 //APPRVAL LETTER - OR PICKUP  
 $bdy = <<<BODYTEXT
+            
         <table border=0 style="width: 7.75in;font-family: Tahoma, arial; font-size: 1vh;">
           <tr><td style=" font-size: 1.2vh;">{$today}</td></tr>
           <tr><td style="padding-top: 2vh;  font-size: 1.2vh;font-weight: bold;">RE: {$projTitle} [{$refDsp}]</td></tr>
@@ -864,9 +895,13 @@ $ORDhandle = fopen($ORDocFile, 'w');
 $ORTdata = "<html><head></head><body>{$ORForm}</body></html>";
 fwrite($ORDhandle, $ORTdata);
 fclose;
+
 $ORAppPDF = genAppFiles . "/publicobj/documents/pfrp/ORD{$letterelements['projid']}.pdf";
-$linuxCmd = "wkhtmltopdf --load-error-handling ignore {$ORDocFile} {$ORAppPDF}";
+
+ //
+$linuxCmd = "wkhtmltopdf  --load-error-handling ignore {$ORDocFile} {$ORAppPDF}";
 $output = shell_exec($linuxCmd);
+                   
 
 $docInsSQL = "insert into pfc.ut_projects_documents (projectid, typeofdocument, directorydocumentname, uploadedon, uploadedby) values (:projectid, :typeofdocument, :directorydocumentname, now(), 'AUTO-SYSTEM')";
 $docInsR = $conn->prepare($docInsSQL);
@@ -875,8 +910,8 @@ $docInsR->execute(array(':projectid' => $letterelements['projid'], ':typeofdocum
       break;
     case "Approved Use PBRF":
 //APROVAL LETTER - PBRF
-$bdy = <<<BODYTEXT
 
+$bdy = <<<BODYTEXT
         <table border=0 style="width: 7.75in;font-family: Tahoma, arial; font-size: 1vh;">
           <tr><td style=" font-size: 1.2vh;">{$today}</td></tr>
           <tr><td style="padding-top: 2vh;  font-size: 1.2vh;font-weight: bold;">RE: {$projTitle} [{$refDsp}]</td></tr>
@@ -891,9 +926,13 @@ $bdy = <<<BODYTEXT
         </table>
 
 BODYTEXT;
+
 $pdfFileName = "APP_PBRF_{$letterelements['projid']}.pdf";
 $docType = 'approvalletter';
+
         break; 
+    
+    
     case "Denied":
 //DENIED LETTER
 $bdy = <<<BODYTEXT
@@ -914,11 +953,11 @@ $bdy = <<<BODYTEXT
 BODYTEXT;
 $pdfFileName = "APP_DENIAL_{$letterelements['projid']}.pdf";
 $docType = 'deniedletter';
+
         break; 
     default:
 
   }
-
 
 $htmldoc = $header . $bdy;
 $docFile = genAppFiles . "/tmp/letter{$letterelements['projid']}.html";
@@ -929,7 +968,7 @@ fclose;
 $appPDF = genAppFiles . "/publicobj/documents/pfrp/{$pdfFileName}";
 $linuxCmd = "wkhtmltopdf --load-error-handling ignore {$docFile} {$appPDF}";
 $output = shell_exec($linuxCmd);
-
+ 
 $docInsSQL = "insert into pfc.ut_projects_documents (projectid, typeofdocument, directorydocumentname, uploadedon, uploadedby) values (:projectid, :typeofdocument, :directorydocumentname, now(), 'AUTO-SYSTEM')";
 $docInsR = $conn->prepare($docInsSQL);
 $docInsR->execute(array(':projectid' => $letterelements['projid'], ':typeofdocument' => $docType, ':directorydocumentname' => $pdfFileName));
@@ -946,25 +985,17 @@ if (trim($ORAppPDF) !== "") {
   $emlR->execute(array(':towhoaddressarray' => json_encode($emailList), ':sbjtline' => "PFRP PROJECT DECISION ({$projectdsp})", ':msgbody' => $htmldoc, ':srverattachment' => $ORAppPDF, ':attachmentname' => 'OR PICKUP FORM'));
 } else { 
 //EMAIL ONLY
-  $emlInsSQL = "insert into serverControls.emailthis (towhoaddressarray, sbjtline, msgbody, srverattachment, attachmentname, htmlind, wheninput, bywho) values (:towhoaddressarray, :sbjtline, :msgbody, 1, now(), 'PFRP-APPLICATION')";
+    
+  $emlInsSQL = "insert into serverControls.emailthis (towhoaddressarray, sbjtline, msgbody, htmlind, wheninput, bywho) values (:towhoaddressarray, :sbjtline, :msgbody, 1, now(), 'PFRP-APPLICATION')";
   $emlR = $conn->prepare($emlInsSQL); 
   $projectdsp = substr(('000000' . $letterelements['projid']),-6);
   $emlR->execute(array(':towhoaddressarray' => json_encode($emailList), ':sbjtline' => "PFRP PROJECT DECISION ({$projectdsp})",':msgbody' => $htmldoc,));
 }
 
 return  "LETTER FOR PROJECT {$letterelements['projid']}";
+
+  
 }
-
-
-
-
-
-
-
-
-
-
-
 
 function buildpfrpapplicationpdf($prjVal, $projectid, $pennkey) { 
   $at = genAppFiles;
