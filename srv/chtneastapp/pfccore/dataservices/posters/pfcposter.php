@@ -121,7 +121,6 @@ function corecontrol($request, $passedData) {
     return $rows;
 }
 
-
 }
 
 
@@ -143,6 +142,49 @@ class securepagerequests {
   private $color_neongreen = "57,255,20";
   private $color_bred = "237, 35, 0";
 
+function myprojects( $usr, $usrmemid, $mobileind, $rqst, $memberinfo ) {
+$tt = pfcurl;
+$securett = pfcsecureurl;
+$preamb = "<!DOCTYPE html>\n<html>";
+$standhead = self::standardHeader();
+$reviewhead = <<<HDR
+<!-- <META http-equiv="refresh" content="0;URL={$tt}"> //-->
+<!-- SCIENCESERVER IDENTIFICATION: {$securett}{$rqst} //-->
+{$standhead}
+<title>PFRP Project Listing</title>
+HDR;
+    
+$ss = self::globalStyle();
+$style= <<<STYLESHT
+<style>
+{$ss}
+body {margin-top: 9vh; } 
+    
+</style>
+STYLESHT;
+
+$jvscript = self::globaljavascriptr($usr); 
+$dtaTree = treeTop;
+$pfcsecure = pfcsecureurl . "/";
+$jvcontent = <<<JAVASCRIPTR
+<script lang=javascript>
+{$jvscript}
+
+</script>
+
+JAVASCRIPTR;
+
+
+
+
+return array(
+         "preamble" => htmlspecialchars($preamb)
+       , "head" => htmlspecialchars($reviewhead)
+       , "style" => htmlspecialchars($style)
+       , "javascriptr" => $jvcontent
+       , "body" => htmlspecialchars($pgContent)
+       );    
+} 
 
 function projectlisting( $usr, $usrmemid, $mobileind, $rqst, $memberinfo ) { 
 $tt = pfcurl;
@@ -623,9 +665,6 @@ return array(
        );
 }
 
-
-
-
 function memberapphome( $usr, $usrmemid, $mobileind, $rqst, $memberinfo ) { 
 $securett = pfcsecureurl;
 
@@ -684,7 +723,6 @@ function standardFootMember() {
 RTNTHIS;
 return $rtnThis;
 }
-
 
 function topAndMenuBarMember($usrPennKey = "", $usrName = "", $usrEmail = "") {
   $at = genAppFiles;
@@ -822,7 +860,6 @@ return array(
        );
 }
     
-    
 function templatehome($systemidentifier, $mobileindicator, $useridentifier) {
      return array(
          "preamble" => htmlspecialchars("<!DOCTYPE html><html>")
@@ -866,7 +903,6 @@ BUTTONS;
 RTNTHIS;
   return $rtnThis;
 }
-
 
 function globaljavascriptrUser($usr) {
 $tt = pfcsecureurl;
@@ -1048,8 +1084,6 @@ RTNTHIS;
 return $rtnThis;
 }
 
-
-
 }
 
 
@@ -1125,7 +1159,6 @@ class pagerequests {
     }
 
 }
-
 
 class pgHeader {
 
@@ -1477,7 +1510,6 @@ RTNTHIS;
 return $rtnThis;
 }
 
-
 function contactpfrp_formLAYOUT($mobileIndicator) {
 
 $cptchaRS = json_decode(callrestapi("GET","https://data.chtneast.org/generatecaptcha", serverIdent, apikey), true);
@@ -1547,7 +1579,6 @@ RTNTHIS;
  }
     return $rtnThis;
 }
-
 
 function pfrpprocess($mobileIndicator) {
 $appPath = genAppFiles;
@@ -1652,8 +1683,6 @@ RTNTHIS;
 }
 
 }
-
-
 
 ///PARKING PAGE ELEMENTS
 function park_body($mobile) {
@@ -1804,7 +1833,6 @@ RTNTHIS;
 }
     return $rtnThis;
 }
-
 
 /* DATA FUNCTIONS */
 

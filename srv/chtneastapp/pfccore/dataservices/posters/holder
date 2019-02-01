@@ -1,0 +1,312 @@
+function myprojects($rqst, $usr, $pfrpid = "", $passedprojid = "") { 
+  $tt = pfcurl;
+  $securett = pfcsecureurl;
+  $this->pageReturned = $rqst;
+  $this->preamble = "<!DOCTYPE html>\n<html>";
+
+$this->head = <<<HDR
+<!-- <META http-equiv="refresh" content="0;URL={$tt}"> //-->
+<!-- SCIENCESERVER IDENTIFICATION: {$securett}/?page={$rqst} //-->
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="chrome=1">
+<meta http-equiv="refresh" content="28800">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="icon" type="image/png" href="https://www.upenn.edu/sites/default/files/favicons/favicon-32x32.png" sizes="32x32"/>
+<link rel="icon" type="image/png" href="https://www.upenn.edu/sites/default/files/favicons/favicon-16x16.png" sizes="16x16"/>
+<title>My Projects Pathology Feasibility Review Panel</title>   
+HDR;
+
+$this->userInfo = array("pfcMember" => false, "pfcPennKey" => $usr['pfcpennkey'], "pfcMemberFirstName" => "", "pfcMemberLastName" => "", "pfcMemberId" => $pfrpid, "pfcMemberEmail" => "");      
+$cHeader = self::topAndMenuBarUser($this->userInfo['pfcPennKey'], $this->userInfo['pfcMemberId']);
+
+$ss = self::globalStyle();
+  $this->style = <<<STYLESHT
+<style>
+{$ss}
+body {margin-top: 9vh; }
+#projectDspHold {font-family: Roboto; font-size: 1.3vh; border-collapse: collapse;}
+#projectNbrTitle {font-size: 1.8vh; font-weight: bold; border-bottom: 3px solid rgba({$this->color_mgrey},1); color: rgba({$this->color_mgrey},1);} 
+#projectVariablesTbl { }
+.projectFieldLabel {font-size: 1.2vh; font-weight: bold; color: rgba({$this->color_zgrey},1); }
+.projectDataField {font-size: 1.2vh;width: 15vw;padding: 10px 0 10px 5px;border: 1px solid rgba({$this->color_zgrey},1); border-bottom: 3px solid rgba({$this->color_lblue},1);   border-radius: 0;box-sizing: border-box;background: rgba({$this->color_white},1); }
+.projectDataField[readonly] {background: rgba({$this->color_lgrey},1); }
+#submitterTbl { }
+#submitterTitle {font-size: 1.4vh; font-weight: bold; color: rgba($this->color_mgrey,1); border-bottom: 3px solid rgba({$this->color_mgrey},1);padding-top: 2vh; } 
+#piTbl { }
+#piTitle {font-size: 1.4vh; font-weight: bold; color: rgba($this->color_mgrey,1); border-bottom: 3px solid rgba({$this->color_mgrey},1);padding-top: 2vh; } 
+#fldPISalutations {width: 10vw; }
+#frmprojectcomments { width: 100%; height: 5vh; padding: 12px 20px; box-sizing: border-box; border: 1px solid rgba({$this->color_zgrey},1);border-radius: 0; background-color: rgba({$this->color_white},1); resize: none; font-size: 1.2vh; }
+#frmprojectcomments[readonly] {background: rgba({$this->color_lgrey},1); }
+.dspQuestion {font-size: 1.4vh; border-bottom: 1px solid rgba({$this->color_grey},1); }
+.pdficondsp:hover {cursor: pointer;}
+#sbmtBtn {border: 1px solid rgba({$this->color_zgrey},1); background: rgba({$this->color_lblue},1);color: rgba({$this->color_white},1);  }
+#sbmtBtn:hover {background: rgba({$this->color_dblue},1);cursor: pointer; }
+#sbmtBtn {text-align: center;padding: 1vh 1vw 1vh 1vw; }
+#myprojectstitle {font-size: 1.4vh; font-weight: bold; color: rgba($this->color_mgrey,1); border-bottom: 3px solid rgba({$this->color_mgrey},1);padding-top: 2vh; } 
+#projectListingTbl { width: 80vw; font-family: Roboto; font-size: 1.1vh; border-collapse: collapse;}
+#projectListingTbl .projListCell { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+.rowhov:hover {background: rgba({$this->color_grey},1);cursor: pointer; }
+.qstionSelect {background: rgba({$this->color_white},1); border: 1px solid rgba({$this->color_zgrey},1);padding: .7vh .5vw .7vh 1vw;width: 10vw; }
+.reqAstrk {font-size: 1.8vh; color: rgba({$this->color_bred},1); }
+#modalBack {position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 100; background: rgba({$this->color_black},.6); display: none; }
+
+#pdfDisplay { width: 80vw; height: 80vh; position: fixed; margin-top: -40vh; top: 50%; background: rgba({$this->color_white},1); z-index: 101; margin-left: -40vw; left: 50%; border: 8px solid rgba({$this->color_mgrey},1);box-sizing: border-box; display: none; overflow: hidden; }
+#displayThisPDF {height: 75vh; width: 78vw;overflow: auto; }
+#closeMod {font-size: 1.8vh; color: rgba({$this->color_mgrey},1); font-weight: bold; } 
+#closeMod:hover {cursor: pointer; color: rgba({$this->color_bred},1); }
+
+
+
+</style>
+STYLESHT;
+
+$jvscript = self::globaljavascriptrUser();
+$this->java = <<<JAVASCRIPTR
+<script lang=javascript>
+{$jvscript}
+</script>
+
+JAVASCRIPTR;
+
+  if (trim($passedprojid) !== "") { 
+
+   //CHECK USER HAS PERMISSION FOR THIS PROJECT - OR CREATE NEW PROJECT
+   if ($passedprojid !== 'new' && is_numeric($passedprojid)) { 
+     $passData = json_encode(array("pennkey" => chtnencrypt($this->userInfo['pfcPennKey']),"projectid" => $passedprojid, "pfrpid" => $pfrpid));
+     $pHold = json_decode(callpfcrestapi("POST","https://data.chtneast.org/pfcapplication/getaproject",pfcaccess,$passData), true);
+     $projectData  = json_decode($pHold['message'], true);    
+     $frmprojectid = "# {$projectData['DATA']['projectid']}";
+     $frmprojectpdf = $projectData['DATA']['projectpdf'];
+     $frmprojecttitle = $projectData['DATA']['projecttitle'];
+     $frmprojectirb = $projectData['DATA']['irbnbr'];
+     $frmprojectirbexpiration = $projectData['DATA']['irbexpiration'];
+     $frmprojectapprovalyear = $projectData['DATA']['approvalyear'];
+     $frmprojectcompleteind = $projectData['DATA']['completeind'];
+     $frmprojectpfcapprovalnumber = $projectData['DATA']['pfcapprovalnumber'];
+     $frmprojectpfcapprovalexpiration = $projectData['DATA']['pfcapprovalexpiration'];
+     $frmprojectidsubmission = $projectData['DATA']['submissiondate'];
+     $frmprojectidcomment = $projectData['DATA']['projectcomments'];
+     $frmprojectsubmitter = $projectData['DATA']['bywhom']; 
+     foreach ($projectData['DATA']['contacts'] as $cvals) {
+       switch ($cvals['contacttype']) {
+         case 'SUBMITTER':
+           $subName = explode(",",$cvals['contactname']);
+           $subphone = $cvals['phonenbr'];
+           $subemail = $cvals['emailaddress'];
+         break;
+         case 'PROJECT-PI':
+           $piName = explode(",",$cvals['contactname']);
+           $piphone = $cvals['phonenbr'];
+           $piemail = $cvals['emailaddress'];
+           $piSalut = $cvals['salutation'];
+         break;
+       }
+     }
+
+     $qstn = $projectData['DATA']['questionanswers'];
+     foreach ($projectData['DATA']['questionanswers'] as $qval) { 
+       $yesno = "<input type=text value=\"{$qval['answer']}\" READONLY class=projectDataField>";  
+       $qColumns .= "<tr><td colspan=3 class=dspQuestion>{$qval['question']}</td><td>{$yesno}</td></tr>";
+     }
+
+     if (trim($frmprojectpdf) !== "" ) { 
+       $docRows = "<tr><td>PROJECT PDF</td><td onclick=\"grabdocumentpdf('{$frmprojectpdf}');\" class=\"pdficondsp\"><i class=\"material-icons\">picture_as_pdf</i></td><td></td></tr>";
+     }
+     foreach ($projectData['DATA']['documents'] as $dvals) {
+       $docRows .= "<tr><td>{$dvals['typeofdocument']} ({$dvals['originaldocumentname']})</td><td onclick=\"grabdocumentpdf('{$dvals['directorydocumentname']}');\" class=\"pdficondsp\"><i class=\"material-icons\">picture_as_pdf</i></td><td>{$dvals['uploadedon']} ({$dvals['uploadedby']})</td></tr>";
+     }
+     
+     $pbrpMetrics = <<<PBRPM
+             <tr><td class=projectFieldLabel style="padding-top: 2vh;">Approval Year</td><td class=projectFieldLabel style="padding-top: 2vh;">PFRP Approval #</td><td class=projectFieldLabel style="padding-top: 2vh;">PFRP Approval Expiration</td><td></td></tr>
+<tr>
+  <td><input type=text id=frmprojectapprvyr class=projectDataField READONLY value="{$frmprojectapprovalyear}"></td>
+  <td><input type=text id=frmprojectapprnbr class=projectDataField READONLY value="{$frmprojectpfcapprovalnumber}"></td>
+  <td><input type=text id=frmprojectappexp class=projectDataField READONLY value="{$frmprojectpfcapprovalexpiration}"></td>
+  <td></td>
+</tr>
+PBRPM;
+     
+     $RO = " READONLY ";
+   } else { 
+
+       $qstnHold = json_decode(callpfcrestapi("GET","https://data.chtneast.org/globalmenu/pbrpyesnoqstn",pfcaccess), true);
+       $qstD = json_decode($qstnHold['datareturn'], true);
+       foreach($qstD['DATA'] as $qVals) {
+           $yesno = "<select id=\"fldAnswerId{$qVals['codevalue']}\" class=\"qstionSelect\"><option value=\"NO\">NO</option><option value=\"YES\">YES</option></select>";
+           $qColumns .= "<tr><td colspan=3 class=dspQuestion>{$qVals['menuvalue']} <span class=reqAstrk>*</span></td><td>{$yesno}</tr>";
+       }
+        
+       $docHold = json_decode(callpfcrestapi("POST","https://data.chtneast.org/pfcapplication/requireddocumentlist",pfcaccess), true);
+       $requiredDocs = json_decode($docHold['message'],true);       
+       foreach ($requiredDocs['DATA'] as $rqd) { 
+
+        if ($rqd['docid'] === 'ADDITIONAL-DOCUMENT') { 
+         $docRows .= "<tr><td class=dspQuestion><div><label for=\"file\">Upload {$rqd['documenttype']}: &nbsp;</label><input type=\"file\" id=\"doc{$rqd['docid']}\" name=\"doc{$rqd['docid']}\" accept=\".pdf\" onchange=\"btoathisfile('bto{$rqd['docid']}', this.files[0]);\"><TEXTAREA id=\"bto{$rqd['docid']}\" style=\"display: none;\"></textarea></div></td></tr>";
+        } else { 
+         $docRows .= "<tr><td class=dspQuestion><div><label for=\"file\">Upload {$rqd['documenttype']}: <span class=reqAstrk>*</span>&nbsp;</label><input type=\"file\" id=\"doc{$rqd['docid']}\" name=\"doc{$rqd['docid']}\" accept=\".pdf\" onchange=\"btoathisfile('bto{$rqd['docid']}', this.files[0]);\"><TEXTAREA id=\"bto{$rqd['docid']}\" style=\"display: none;\"></textarea></div></td></tr>";
+        }
+
+       }
+       $RO = "";
+       $submitbtn = "<tr><td colspan=4 align=right><button onclick=\"submitPFRPApplication();\" id=sbmtBtn>Submit<br>Application</button></td></tr>";
+   }
+
+$saluHold = json_decode(callpfcrestapi("GET","https://data.chtneast.org/globalmenu/standardsalutations",pfcaccess), true);
+if ($saluHold['responseCode'] === 200) { 
+  $saluVal = json_decode($saluHold['datareturn'], true);
+  foreach($saluVal['DATA'] as $saluv) { 
+      $saluMenu .= "<option value=\"{$saluv['menuvalue']}\">{$saluv['menuvalue']}</option>";
+} 
+} else {
+  $saluMenu = "ERROR NO MENU FOUND IN SERVICE";
+}
+
+$salutList = "<select id=fldPISalutations class=qstionSelect style=\"width: 15vw;padding: .7vh 0 .7vh .3vw;\">{$saluMenu}</select>";
+
+$cpiTbl = <<<CONTACTFORMPI
+<table border=0 id=piTbl>
+  <tr><td colspan=3 id=piTitle>PRINCIPAL INVESTIGATOR CONTACT INFORMATION</td></tr>
+  <tr><td class=projectFieldLabel>First Name <span class=reqAstrk>*</span></td><td class=projectFieldLabel>Last Name<span class=reqAstrk>*</span></td></tr>
+  <tr><td><input type=text id=frmcontactpifname value="{$piName[1]}" class=projectDataField {$RO}></td>
+      <td><input type=text id=frmcontactpilname value="{$piName[0]}" class=projectDataField {$RO}></td>
+  </tr>
+  <tr><td colspan=2>
+   
+   <table>
+    <tr><td class=projectFieldLabel>Salutations: <span class=reqAstrk>*</span></td><td>{$salutList}</td></tr>
+    <tr><td class=projectFieldLabel>Phone: <span class=reqAstrk>*</span></td><td><input type=text id=frmcontactpiphone class=projectDataField value="{$piphone}" {$RO}></td></tr>
+    <tr><td class=projectFieldLabel>Email: <span class=reqAstrk>*</span></td><td><input type=text id=frmcontactpiemail class=projectDataField value="{$piemail}" {$RO}></td></tr>
+    </table>
+
+</td></tr>
+</table>
+CONTACTFORMPI;
+
+$csubmTbl = <<<CONTACTFORMSUBMITTER
+
+<table border=0 id=submitterTbl>
+  <tr><td colspan=2 id=submitterTitle>SUBMITTER CONTACT INFORMATION</td></tr>
+  <tr><td class=projectFieldLabel>First Name <span class=reqAstrk>*</span></td><td class=projectFieldLabel>Last Name <span class=reqAstrk>*</span></td></tr>
+  <tr><td><input type=text id=frmcontactsubmitterfname class=projectDataField value="{$subName[1]}" {$RO}></td>
+      <td><input type=text id=frmcontactsubmitterlname class=projectDataField value="{$subName[0]}" {$RO}>
+      </td>
+  </tr>
+  <tr><td colspan=2>
+
+<table>
+<tr><td class=projectFieldLabel>Phone: <span class=reqAstrk>*</span></td><td><input type=text id=frmcontactsubmitterphone value="{$subphone}" class=projectDataField style="width: 27vw;"  {$RO}></td></tr>
+<tr><td class=projectFieldLabel>Email: <span class=reqAstrk>*</span></td><td><input type=text id=frmcontactsubmitteremail value="{$subemail}" class=projectDataField style="width: 27vw;" {$RO}></td></tr>
+</table>
+
+</td></tr>
+</table>
+CONTACTFORMSUBMITTER;
+
+$projHDTbl = <<<PRJHDTBL
+<table border=0 id=projectVariablesTbl>
+<tr><td colspan=4 class=projectFieldLabel style="padding-top: 2vh; ">Project Title <span class=reqAstrk>*</span></td></tr>
+<tr><td colspan=4><input type=text id=fldProjecTitle value="{$frmprojecttitle}" class=projectDataField style="width: 61vw;" {$RO}></td></tr> 
+<tr><td class=projectFieldLabel>IRB # <span class=reqAstrk>*</span></td><td class=projectFieldLabel>IRB Expiration <span class=reqAstrk>*</span></td><td class=projectFieldLabel>Submitter</td><td>Submitted On</td></tr>
+<tr>
+  <td><input id=fldprojectirbnbr value="{$frmprojectirb}" class=projectDataField style="width: 15vw;" {$RO}></td>
+  <td><input id=fldprojectirbexp value="{$frmprojectirbexpiration}" class=projectDataField style="width: 15vw;" {$RO}></td>
+  <td><input id=fldprojectsubmitter value="{$frmprojectsubmitter}" class=projectDataField style="width: 15vw;" READONLY></td>
+  <td><input id=fldprojectsubmiton value="{$frmprojectidsubmission}" class=projectDataField style="width: 15vw;" READONLY></td>
+</tr>
+<tr><td colspan=2 valign=top>
+{$csubmTbl}
+</td><td colspan=2 valign=top>
+{$cpiTbl}
+</td></tr>
+<tr><td colspan=4 class=projectFieldLabel>Project Comments</td></tr>
+<tr><td colspan=4><TEXTAREA id=frmprojectcomments {$RO}>{$frmprojectidcomment}</TEXTAREA></td></tr>
+
+<tr><td colspan=4 class=projectFieldLabel style="padding-top: 2vh;">Questions</td></tr>
+{$qColumns}
+
+<tr><td colspan=4 class=projectFieldLabel style="padding-top: 2vh;">Project Documents</td></tr>
+<tr><td colspan=4>
+<table border=0>
+{$docRows}
+</table>
+</td></tr>
+{$pbrpMetrics}
+
+{$submitbtn}
+</table>
+PRJHDTBL;
+
+
+$bdy = <<<PROJECTTABLE
+<center><table border=0 id=projectDspHold>
+<tr><td id=projectNbrTitle>Project {$frmprojectid}</td></tr>
+<tr><td>{$projHDTbl}</td></tr>
+</table>
+
+<div id=modalBack></div>
+<div id=pdfDisplay>
+<table style="width: 79vw;height: 78vh;" border=0><tr><td align=right style="height: 2vh;"><span id=closeMod onclick="closeModal();">&times;</span></td></tr>
+<tr><td valign=top>
+<div id=displayThisPDF>
+PDF
+</div>
+</td></tr>
+</table>
+</div>
+
+PROJECTTABLE;
+
+
+  } else {
+    //LIST OF MY PROJECTS  
+    $passData = json_encode(array("pennkey" => chtnencrypt($this->userInfo['pfcPennKey'])));    
+    $projWS = json_decode(callpfcrestapi("POST","https://data.chtneast.org/pfcapplication/getmyprojects",pfcaccess,$passData), true);
+    $projDta = json_decode($projWS['message'],true);
+    if ((int)$projDta['ITEMS'] === 0) { 
+      $bdy = "NO PROJECT FOUND";
+    } else { 
+
+      $bdyTbl = "<center><table border=0><tr><td id=myprojectstitle>My PFRP Projects</td></tr><tr><td><p><table border=0 id=projectListingTbl><tr><th class=projListCell><center>Complete</th><th class=projListCell><center>Project<br>PDF</th><th class=projListCell>PFRP #</th><th class=projListCell>PI's Name</th><th class=projListCell>Project Title</th><th class=projListCell>IRB#</th><th class=projListCell>IRB<br>Expiration</th><th class=projListCell>PFRP Status</th><th class=projListCell>PFRP Condition</th><th class=projListCell>Status<br>Date</th><th class=projListCell>Submission<br>Date</th><th class=projListCell>PFRP<br>Approval #</th><th class=projListCell>PFRP<br>Approval Expiration</th></tr> ";
+      foreach($projDta['DATA'] as $k => $v) { 
+        $completechk = "";
+        if ((int)$v['completeind'] === 1) { 
+          $completechk = "<i class=\"material-icons\">check</i>";
+        }
+        $pdfico = "";
+        if (trim($v['projectpdf']) !== "") { 
+          $pdfico = "<i class=\"material-icons\">picture_as_pdf</i>";
+        }
+        $pid = (int)$v['projectid'];
+        $bdyTbl .= "<tr onClick=\"navigateSite('my-projects&pfrpid={$pfrpid}&projid={$pid}');\" class=rowhov>" 
+                 . "<td class=projListCell><center>{$completechk}</td>"
+                 . "<td class=projListCell><center>{$pdfico}</td>"
+                 . "<td class=projListCell>{$v['projectid']}</td>"
+                 . "<td class=projListCell>{$v['projectpi']}</td>"
+                 . "<td class=projListCell>{$v['projecttitle']}</td>"
+                 . "<td class=projListCell>{$v['irbnbr']}</td>"
+                 . "<td class=projListCell>{$v['irbexpiration']}</td>"
+                 . "<td class=projListCell>{$v['datastatus']}</td>"
+                 . "<td class=projListCell>{$v['statusmodifier']}</td>"
+                 . "<td class=projListCell>{$v['statusdate']}</td>"
+                 . "<td class=projListCell>{$v['projectcreationdate']}</td>"
+                 . "<td class=projListCell>{$v['pfcapprovalnumber']}</td>"
+                 . "<td class=projListCell>{$v['pfcapprovalexpiration']}</td>"
+                 . "</tr>";
+      }
+      $bdyTbl .= "</table></td></tr></table>";
+      $bdy = $bdyTbl;
+    }
+  }
+  $this->body = array("contentHeader" => $cHeader, "contentSection" => $bdy, "contentFooter" => "");
+  $this->response = 200;
+  $rtnData['response'] = $this->response;
+  $rtnData['pageReturned'] = $this->pageReturned;
+  $rtnData['preamble'] = $this->preamble;
+  $rtnData['pageHead'] = $this->head;
+  $rtnData['stylesheet'] = $this->style;
+  $rtnData['javascriptr'] = $this->java;
+  $rtnData['userInfo'] = $this->userInfo;
+  $rtnData['pageBody'] = $this->body; 
+  return json_encode($rtnData);        
+}  
