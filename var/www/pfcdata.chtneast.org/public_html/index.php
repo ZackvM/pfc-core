@@ -25,7 +25,7 @@ if ( strtoupper($method) !== "POST" && strtoupper($method) !== "OPTIONS" ) {
   if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     //    if (isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD']) && $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD'] == 'POST') {
     header('Access-Control-Allow-Origin: *');
-    header('Access-Control-Allow-Headers: X-Requested-With, content-type, access-control-allow-origin, access-control-allow-methods, access-control-allow-headers, pfc-token, pfc-pass, pfc-data-token, chtn-public, zack-override');
+    header('Access-Control-Allow-Headers: X-Requested-With, content-type, access-control-allow-origin, access-control-allow-methods, access-control-allow-headers, pfc-token, pfc-pass, pfc-data-token, pfc-user-token, chtn-public, zack-override');
     //  }
     exit;
   }
@@ -45,10 +45,11 @@ if ( strtoupper($method) !== "POST" && strtoupper($method) !== "OPTIONS" ) {
   define("uriPath","pfcdata.chtneast.org");
   define("treeTop","https://pfcdata.chtneast.org");
   define("pfcurl","https://pfc.med.upenn.edu");
-  define("pfcsecureurl","https://pfc.med.upenn.edu");
+  define("pfcsecureurl","https://hosting.med.upenn.edu/pfc/secure");
   define("dataPath","https://pfcdata.chtneast.org");
   define("applicationTree","/srv/chtneastapp/pfcdata/frame");
   define("genAppFiles","/srv/chtneastapp/pfccore");
+  //define("pfcaccess", chtnencrypt("PFC-USER"));
   define("serverkeys","/srv/chtneastapp/pfccore/dataconn");
 
   //MODULUS HAS BEEN CHANGED TO DEV.CHTNEAST.ORG

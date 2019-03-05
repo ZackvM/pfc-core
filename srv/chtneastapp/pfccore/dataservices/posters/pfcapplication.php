@@ -7,7 +7,6 @@ class pfcdataapplication {
   public $itemsFound = 0;
   public $rtnData = array();
   
-  
   function __construct() { 
     $args = func_get_args(); 
     $nbrofargs = func_num_args(); 
@@ -52,7 +51,6 @@ class pfcdataapplication {
     }
     
   }
-  
   
 }
 
@@ -676,9 +674,11 @@ function savepfrpapplication($request, $passedData, $rUsr, $rSession) {
    } else {
      //CONTINUE ON
      //Validate Dates
+
+     
      if (!validateDate($vals['fldprojectirbexp'], 'm/d/Y')) {
        $this->responseCode = 500;
-       $this->message = "NOT A VALID DATE (mm/dd/YYYY)";
+       $this->message = "IRB EXPIRATION IS NOT A VALID DATE (format = mm/dd/YYYY)";
      } else {
        $d = DateTime::createFromFormat('m/d/Y',$vals['fldprojectirbexp']);
        $irbexpiration = $d->format('Y-m-d');
@@ -687,7 +687,11 @@ function savepfrpapplication($request, $passedData, $rUsr, $rSession) {
          $this->responseCode = 500;
          $this->message = "ALL EMAIL ADDRESSES MUST BE VALID";
        } else {
-         $rqstr = $rUsr;
+    
+         $hdrs = apache_request_headers();
+         $rqstr = pfccryptservice( $hdrs['pfc-user-token'] , 'd' , false);
+
+         //UNCOMMENT THIS IN PRODUCTION
          $ccemail = $vals['frmcontactsubmitteremail'];
          $projuserid = addpfcusr($rqstr, trim($vals['frmcontactsubmitterfname']), trim($vals['frmcontactsubmitterlname']));
          $projectid = addpfcprojectdetails($vals, $projuserid, $rqstr, $irbexpiration);
@@ -722,6 +726,262 @@ function savepfrpapplication($request, $passedData, $rUsr, $rSession) {
    return $rows;
 }
 
+}
+
+function buildpfrpapplicationpdf($prjVal, $projectid, $pennkey) { 
+  $at = genAppFiles;
+  require(genAppFiles .  "/dataconn/sspdo.zck");
+  $pPic = base64file( "{$at}/publicobj/graphics/psom_logo_blue.png", "PSOMLogo", "image", true, " style=\"width: 1.5in;\" ");
+  $header = "<table border=0 style=\"width: 7.75in;\"><tr><td>{$pPic}</td><td style=\"text-align: center;font-size: 1.2vh;font-family: tahoma, arial; font-weight: bold;\">Pathology Feasibility Review Panel (PFRP)<br>Application Submission</td><td style=\"width: 1.5in;\">&nbsp;</td></tr></table>";
+  $dspProjId = substr(('000000' . $projectid), -6);
+  $usrSQL = "SELECT projectUserId FROM pfc.ut_projectUsers where pennkey = :pennkey";
+  $usrR = $conn->prepare($usrSQL); 
+  $usrR->execute(array(':pennkey' => $pennkey)); 
+  $usr = $usrR->fetch(PDO::FETCH_ASSOC);
+  $usrpfrpid = ("PFRP-" . substr(("0000" .  $usr['projectUserId']), -4));
+  $subTime = date('m/d/Y H:i:s');
+$htmlBody = <<<HTMLBODY
+<table border=0 style="width: 720px"><tr><td align=right><table style="font-family: tahoma, arial; font-size: 1vh;"><tr><td><b>User</b>: </td><td>{$pennkey} / {$usrpfrpid}&nbsp;</td><td style="border-left: 1px solid #000054;">&nbsp;<b>PFRP Project #</b>: </td><td>{$dspProjId}</td></tr></table> </td></tr></table>
+<table border=0 style="width: 720px">
+<tr><td style="font-family: tahoma, arial; font-size: 1.3vh; font-weight: bold; border-bottom: 1px solid #000054;">Project</td></tr>
+<tr><td style="font-family: tahoma, arial; font-size: 1vh;padding: 5px;">{$prjVal['fldProjecTitle']}</td></tr>
+<tr><td><table><tr><td style="font-family: tahoma, arial; font-size: 1vh; font-weight: bold;">IRB #:&nbsp;</td><td style="font-family: tahoma, arial; font-size: 1vh;">{$prjVal['fldprojectirbnbr']}&nbsp;&nbsp;&nbsp;</td><td style="font-family: tahoma, arial; font-size: 1vh; font-weight: bold;">IRB Expiry:&nbsp;</td><td style="font-family: tahoma, arial; font-size: 1vh;">{$prjVal['fldprojectirbexp']}&nbsp;&nbsp;&nbsp;</td><td style="font-family: tahoma, arial; font-size: 1vh; font-weight: bold;">PFRP Submission Date:&nbsp;</td><td style="font-family: tahoma, arial; font-size: 1vh;">{$subTime}</td></tr></table> </td></tr>
+<tr><td style="font-family: tahoma, arial; font-size: 1.3vh; font-weight: bold;padding-top: 8px;">Application Questions</td></tr>
+<tr><td>
+<table border=0 style="font-family: tahoma, arial; font-size: 1vh;">
+<tr><td valign=top style="border-left: 1px solid #ccc; border-bottom: 1px solid #ccc;"><b>1.</b></td><td valign=top style="border-bottom: 1px solid #ccc;">Will you be using human tissue in research?</td><td valign=top style="border-bottom: 1px solid #ccc;">{$prjVal['fldAnswerIdqstnOne']}</td></tr>
+<tr><td valign=top style="border-left: 1px solid #ccc; border-bottom: 1px solid #ccc;"><b>2.</b></td><td valign=top style="border-bottom: 1px solid #ccc;">Could the human tissue obtained from clinical procedures be used for research without compromising diagnosis or patient care?</td><td valign=top style="border-bottom: 1px solid #ccc;">{$prjVal['fldAnswerIdqstnTwo']}</td></tr>
+<tr><td valign=top style="border-left: 1px solid #ccc; border-bottom: 1px solid #ccc;"><b>3.</b></td><td valign=top style="border-bottom: 1px solid #ccc;">Will this project require a source of human tissue from a research-only procedure, with no clinical specimens being submitted to pathology?</td><td valign=top style="border-bottom: 1px solid #ccc;">{$prjVal['fldAnswerIdqstnThree']}</td></tr>
+<tr><td valign=top style="border-left: 1px solid #ccc; border-bottom: 1px solid #ccc;"><b>4.</b></td><td valign=top style="border-bottom: 1px solid #ccc;">Will this project require the collection of human material(s) directly from the operating room?</td><td valign=top style="border-bottom: 1px solid #ccc;">{$prjVal['fldAnswerIdqstnFour']}</td></tr>
+</table>
+</td></tr>
+<tr><td style="font-family: tahoma, arial; font-size: 1.3vh; font-weight: bold;padding-top: 8px;">Uploaded Documents</td></tr>
+<tr><td>
+<table border=0 style="font-family: tahoma, arial; font-size: 1vh;">
+<tr><td valign=top style="border-left: 1px solid #ccc; border-bottom: 1px solid #ccc;"><b>1.</b></td><td valign=top style="border-bottom: 1px solid #ccc;">PROJECT-PROTOCOL</td><td valign=top style="border-bottom: 1px solid #ccc;">{$prjVal['docPROJECT-PROTOCOL']}</td></tr>
+<tr><td valign=top style="border-left: 1px solid #ccc; border-bottom: 1px solid #ccc;"><b>2.</b></td><td valign=top style="border-bottom: 1px solid #ccc;">IRB-APPROVAL</td><td valign=top style="border-bottom: 1px solid #ccc;">{$prjVal['docIRB-APPROVAL']}</td></tr>
+<tr><td valign=top style="border-left: 1px solid #ccc; border-bottom: 1px solid #ccc;"><b>3.</b></td><td valign=top style="border-bottom: 1px solid #ccc;">CONSENT-FORM</td><td valign=top style="border-bottom: 1px solid #ccc;">{$prjVal['docCONSENT-FORM']}</td></tr>
+<tr><td valign=top style="border-left: 1px solid #ccc; border-bottom: 1px solid #ccc;"><b>4.</b></td><td valign=top style="border-bottom: 1px solid #ccc;">ADDITIONAL-DOCUMENTATION</td><td valign=top style="border-bottom: 1px solid #ccc;">{$prjVal['docADDITIONAL-DOCUMENT']}</td></tr>
+</table>
+</td></tr>
+<tr><td style="font-family: tahoma, arial; font-size: 1.3vh; font-weight: bold;padding-top: 8px;">Additional Comments</td></tr>
+<tr><td style="font-family: tahoma, arial; font-size: 1vh;padding: 5px;">{$prjVal['frmprojectcomments']}&nbsp;</td></tr>
+</table>
+<table style="font-family: tahoma, arial; font-size: 1vh;">
+<tr><td colspan=2 style="font-family: tahoma, arial; font-size: 1.3vh; font-weight: bold;padding-top: 8px;">Submitter</td></tr>
+<tr><td><b>Name</b>:&nbsp;</td><td>{$prjVal['frmcontactsubmitterlname']}, {$prjVal['frmcontactsubmitterfname']} ({$pennkey})&nbsp;</td></tr>
+<tr><td><b>Phone</b>:&nbsp;</td><td>{$prjVal['frmcontactsubmitterphone']}&nbsp;</td></tr> 
+<tr><td><b>Email</b>:&nbsp;</td><td>{$prjVal['frmcontactsubmitteremail']}&nbsp;</td></tr> 
+<tr><td colspan=2 style="font-family: tahoma, arial; font-size: 1.3vh; font-weight: bold;padding-top: 8px;">Principal Investigator</td></tr>
+<tr><td><b>Name</b>:&nbsp;</td><td>{$prjVal['frmcontactpilname']}, {$prjVal['frmcontactpifname']}&nbsp;</td></tr>
+<tr><td><b>Phone</b>:&nbsp;</td><td>{$prjVal['frmcontactpiphone']}&nbsp;</td></tr> 
+<tr><td><b>Email</b>:&nbsp;</td><td>{$prjVal['frmcontactpiemail']}&nbsp;</td></tr> 
+</table>
+<p>
+HTMLBODY;
+$footer = <<<HTMLFOOT
+<table style="width: 720px;font-family: tahoma, arial; font-size: .8vh;"><tr><td><center>Pathology Feasibility Review Panel (PFRP)<br>Hospital of the University of Pennsylvania<br>3400 Spruce Street, 6 FOUNDERS<br>Philadelphia, Pennsylvania 19104<br>(215) 662-4570</td></tr></table>
+HTMLFOOT;
+$htmldoc = <<<HTMLDOC
+<table border=0 style="width: 720px"><tr><td style="border-bottom: 2px solid #000054;">{$header}</td></tr><tr><td>{$htmlBody}</td></tr><tr><td style="border-top: 1px solid #000054;text-align: center;">{$footer}</td></tr></table>
+HTMLDOC;
+$docFile = genAppFiles . "/tmp/projApp{$projectid}.html";
+$handle = fopen($docFile, 'w');
+$data = "<html><head></head><body>{$htmldoc}</body></html>";
+fwrite($handle, $data);
+fclose;
+$appFileName = "projectApplication{$projectid}.pdf";
+$appPDF = genAppFiles . "/publicobj/documents/pfrp/{$appFileName}";
+$linuxCmd = "wkhtmltopdf --load-error-handling ignore {$docFile} {$appPDF}";
+$output = shell_exec($linuxCmd);
+$updSQL = "update pfc.ut_projects set projectPDF = :pdfFileName where projectid = :projectid";
+$uR = $conn->prepare($updSQL); 
+$uR->execute(array(':pdfFileName' => $appFileName, ':projectid' => $projectid));
+return $htmldoc;
+}
+
+function documentreconstruction($prjVal, $projectid, $pennkey) { 
+//TODO: MAKE THIS FUNCTION DYNAMIC
+
+require(genAppFiles .  "/dataconn/sspdo.zck");
+$docInsSQL = "insert into pfc.ut_projects_documents (projectid, typeofdocument, originaldocumentname, directorydocumentname, uploadedon, uploadedby) values (:projectid, :typeofdocument, :originaldocumentname, :directorydocumentname, now(), :uploadedby)";  
+$docR = $conn->prepare($docInsSQL);
+
+$ky = bin2hex(random_bytes(5));      
+
+  $prjprotdoc = $prjVal['btoPROJECT-PROTOCOL'];
+  if (trim($prjprotdoc) !== "") {
+    $docFile = genAppFiles . "/publicobj/documents/pfrp/proj_prot_{$ky}.pdf";
+    $handle = fopen($docFile, 'w');
+    $data = base64_decode(str_replace("data:application/pdf;base64,","",$prjprotdoc));
+    fwrite($handle, $data);
+    fclose;
+    $docR->execute(array(':projectid' => $projectid, ':typeofdocument' => 'PROJECT-PROTOCOL', 'originaldocumentname' => "{$prjVal['docPROJECT-PROTOCOL']}", ':directorydocumentname' => "proj_prot_{$ky}.pdf",':uploadedby' => $pennkey));
+  }
+
+  $prjirbdoc = $prjVal['btoIRB-APPROVAL'];
+  if (trim($prjirbdoc) !== "") {
+    $docFile = genAppFiles . "/publicobj/documents/pfrp/proj_irb_{$ky}.pdf";
+    $handle = fopen($docFile, 'w');
+    $data = base64_decode(str_replace("data:application/pdf;base64,","",$prjirbdoc));
+    fwrite($handle, $data);
+    fclose;
+    $docR->execute(array(':projectid' => $projectid, ':typeofdocument' => 'IRB-APPROVAL', 'originaldocumentname' => "{$prjVal['docIRB-APPROVAL']}", ':directorydocumentname' => "proj_irb_{$ky}.pdf",':uploadedby' => $pennkey));
+  }
+
+  $prjconsdoc = $prjVal['btoCONSENT-FORM'];
+  if (trim($prjconsdoc) !== "") {
+    $docFile = genAppFiles . "/publicobj/documents/pfrp/proj_consent_{$ky}.pdf";
+    $handle = fopen($docFile, 'w');
+    $data = base64_decode(str_replace("data:application/pdf;base64,","",$prjconsdoc));
+    fwrite($handle, $data);
+    fclose;
+    $docR->execute(array(':projectid' => $projectid, ':typeofdocument' => 'CONSENT-FORM', 'originaldocumentname' => "{$prjVal['docCONSENT-FORM']}", ':directorydocumentname' => "proj_consent_{$ky}.pdf",':uploadedby' => $pennkey));
+  }
+
+  if (trim($prjVal['docADDITIONAL-DOCUMENT']) !== "") { 
+    $prjadddoc = $prjVal['btoADDITIONAL-DOCUMENT'];
+    $docFile = genAppFiles . "/publicobj/documents/pfrp/proj_additional_{$ky}.pdf";
+    $handle = fopen($docFile, 'w');
+    $data = base64_decode(str_replace("data:application/pdf;base64,","",$prjadddoc));
+    fwrite($handle, $data);
+    fclose;
+    $docR->execute(array(':projectid' => $projectid, ':typeofdocument' => 'ADDITIONAL-DOCUMENT', 'originaldocumentname' => "{$prjVal['docADDITIONAL-DOCUMENT']}", ':directorydocumentname' => "proj_additional_{$ky}.pdf",':uploadedby' => $pennkey));
+  } 
+
+}
+
+function addquestionanswers($prjVal, $projectid, $pennkey) { 
+  //TODO:  MAKE THIS FUNCTION DYNAMIC 
+  require(genAppFiles .  "/dataconn/sspdo.zck");
+  $insSQL = "insert into pfc.ut_projects_questionanswers(projectid, questionid, answer, bywho, inputon) values (:projectid, :questionid, :answer, :bywho, now())";
+  $aR = $conn->prepare($insSQL);
+               
+  $answer = (trim($prjVal['fldAnswerIdqstnOne']) === "YES") ? 1 : 0;
+  $aR->execute(array(':projectid' => $projectid, ':questionid' => 'qstnOne', ':answer' => $answer, ':bywho' => $pennkey)); 
+
+  $answer = (trim($prjVal['fldAnswerIdqstnTwo']) === "YES") ? 1 : 0;
+  $aR->execute(array(':projectid' => $projectid, ':questionid' => 'qstnTwo', ':answer' => $answer, ':bywho' => $pennkey)); 
+
+  $answer = (trim($prjVal['fldAnswerIdqstnThree']) === "YES") ? 1 : 0;
+  $aR->execute(array(':projectid' => $projectid, ':questionid' => 'qstnThree', ':answer' => $answer, ':bywho' => $pennkey)); 
+
+  $answer = (trim($prjVal['fldAnswerIdqstnFour']) === "YES") ? 1 : 0;
+  $aR->execute(array(':projectid' => $projectid, ':questionid' => 'qstnFour', ':answer' => $answer, ':bywho' => $pennkey)); 
+
+}
+
+function addprojectcomments($prjVal, $projectid, $pennkey) { 
+  require(genAppFiles .  "/dataconn/sspdo.zck");
+  $insSQL = "insert into pfc.ut_projects_comments (projectid, projcomments, onwhen, bywhom) values(:projectid,:comments,now(),:pennkey)";
+  $cR = $conn->prepare($insSQL); 
+  $cR->execute(array(
+      ':projectid' => $projectid
+      ,':comments' => $prjVal['frmprojectcomments']
+      ,':pennkey' => $pennkey
+  ));
+}
+
+function addpfccontacts($prjVal, $projectid, $pennkey) { 
+  require(genAppFiles .  "/dataconn/sspdo.zck");
+  $conInsSQL = "insert into pfc.ut_projects_contacts (projid, contactname, salutation, contactType, added, addedby) value (:projid,:name,:sal,:contype,now(),:pennkey)";  
+  $cR = $conn->prepare($conInsSQL); 
+  $cR->execute(
+   array( 
+     ':projid' => $projectid
+    ,':name' => trim($prjVal['frmcontactsubmitterlname']) . ", " . trim($prjVal['frmcontactsubmitterfname'])
+    ,':sal' => ""
+    ,':contype' => "SUBMITTER"
+    ,':pennkey' => $pennkey
+    ));
+   $conid = $conn->lastInsertId();
+   addcontactmetrics($conid, "PHONE", $prjVal['frmcontactsubmitterphone'], $pennkey);
+   addcontactmetrics($conid, "EMAIL", $prjVal['frmcontactsubmitteremail'], $pennkey);
+
+  $cR->execute(
+   array( 
+     ':projid' => $projectid
+    ,':name' => trim($prjVal['frmcontactpilname']) . ", " . trim($prjVal['frmcontactpifname'])
+    ,':sal' => trim($prjVal['fldPISalutations'])
+    ,':contype' => "PROJECT-PI"
+    ,':pennkey' => $pennkey
+    ));
+   $conpid = $conn->lastInsertId();
+   addcontactmetrics($conpid, "PHONE", $prjVal['frmcontactpiphone'], $pennkey);
+   addcontactmetrics($conpid, "EMAIL", $prjVal['frmcontactpiemail'], $pennkey);
+}
+
+function addcontactmetrics($contactid = 0, $contype = "", $conmet = "", $pennkey = "") { 
+  require(genAppFiles .  "/dataconn/sspdo.zck");
+  $insSQL = "insert into pfc.ut_projects_contacts_metrics (contactid, typeofcontmet, metric, onwhen, onby) values (:contactid, :typeofconmet, :metric, now(), :onby)";
+  $iR = $conn->prepare($insSQL); 
+  $iR->execute(array(':contactid' => $contactid,':typeofconmet' => $contype,':metric' => $conmet,':onby' => $pennkey));
+}
+
+function addpfcprojectdetails($prjVal, $uid, $pennkey, $irbexp) { 
+  require(genAppFiles .  "/dataconn/sspdo.zck");
+ //TODO:  GENERATE THE PROJECT PDF HERE generatePFCProjectPDF
+  $insSQL = "insert into pfc.ut_projects (userid, pennkey, projecttitle, irbnbr, irbexpiration, submitonwhen, submitbywho) values (:usrid,:pennkey,:prjtitle,:prjirbnbr,:prjirbexp, now(),:pennkeysubmitter)";
+  $rs = $conn->prepare($insSQL);
+  $valus = array(
+      ':usrid' => $uid
+      ,':pennkey' => $pennkey
+      ,':prjtitle' => trim($prjVal['fldProjecTitle'])
+      ,':prjirbnbr' => trim($prjVal['fldprojectirbnbr'])
+      ,':prjirbexp' => $irbexp
+      ,':pennkeysubmitter' => $pennkey 
+    );
+  $rs->execute($valus);
+  $projectid = $conn->lastInsertId();
+  updatepfcprojectstatus($projectid,'SUBMITTED','','PROJECT-ENTRY-SCREEN',$pennkey);
+  return $projectid;
+}
+
+function updatepfcprojectstatus($projectid, $status = "", $statusmodifier = "", $appModule = "", $who = "PFRP-SYSTEM") { 
+  require(genAppFiles .  "/dataconn/sspdo.zck");
+  $insStatusSQL = "insert into pfc.appdata_project_statuses "
+               . "(datastatus,statusmodifier,statusdate,projid, applicationmodule, statusby) "
+               . "values (:datastatus,:statusmodifier ,now(),:projid, :applicationmodule, :statusby)";
+  $sR = $conn->prepare($insStatusSQL); 
+  $sR->execute(
+         array(
+             ':datastatus' => $status
+             , ':statusmodifier' => $statusmodifier
+             , ':projid' => $projectid
+             , ':applicationmodule' => $appModule
+             , ':statusby' => $who)); 
+}
+
+function addpfcusr($pennkey = "", $usrFName = "", $usrLName = "") { 
+  $userid = 0;
+  $ky = bin2hex(random_bytes(5));    
+  if (trim($pennkey) === "" || trim($usrFName) === "" || trim($usrLName) === "") { 
+  } else {
+    require(genAppFiles .  "/dataconn/sspdo.zck");
+    $chkSQL = "SELECT projectuserid, pennkey FROM pfc.ut_projectUsers where pennkey = :pkey";
+    $chkR = $conn->prepare($chkSQL); 
+    $chkR->execute(array(':pkey' => $pennkey));
+    if ($chkR->rowCount() < 1) { 
+      //ADD NEW USER
+      $sql = "insert into pfc.ut_projectUsers (pennkey, firstname, lastname, pfrpid, dateadded) values (:pkey,:fname,:lname,:pfrpid,now())";
+      $r = $conn->prepare($sql); 
+      $r->execute(array(':pkey' => trim($pennkey), ':fname' => trim($usrFName), ':lname' => trim($usrLName), ':pfrpid' => $ky));     
+      $userid = $conn->lastInsertId();
+    } else { 
+      //UPDATE USER
+      $rs = $chkR->fetch(PDO::FETCH_ASSOC);
+      $userid = $rs['projectuserid'];
+      $updSQL = "update  pfc.ut_projectUsers set firstName = :fname, lastname = :lname, pfrpid = :ky where projectuserid = :usrid"; 
+      $u = $conn->prepare($updSQL); 
+      $u->execute(array(
+          ':fname' => trim($usrFName) 
+          , ':lname' => trim($usrLName)
+          , ':ky' => $ky
+          , ':usrid' => $userid
+       ));
+    }
+  }
+  return $userid; 
 }
 
 function pfcmember($loggedonUser) {
@@ -997,80 +1257,12 @@ return  "LETTER FOR PROJECT {$letterelements['projid']}";
   
 }
 
-function buildpfrpapplicationpdf($prjVal, $projectid, $pennkey) { 
-  $at = genAppFiles;
-  require(genAppFiles .  "/dataconn/sspdo.zck");
-  $pPic = base64file( "{$at}/publicobj/graphics/psom_logo_blue.png", "PSOMLogo", "image", true, " style=\"width: 1.5in;\" ");
-  $header = "<table border=0 style=\"width: 7.75in;\"><tr><td>{$pPic}</td><td style=\"text-align: center;font-size: 1.2vh;font-family: tahoma, arial; font-weight: bold;\">Pathology Feasibility Review Panel (PFRP)<br>Application Submission</td><td style=\"width: 1.5in;\">&nbsp;</td></tr></table>";
-  $dspProjId = substr(('000000' . $projectid), -6);
-  $usrSQL = "SELECT projectUserId FROM pfc.ut_projectUsers where pennkey = :pennkey";
-  $usrR = $conn->prepare($usrSQL); 
-  $usrR->execute(array(':pennkey' => $pennkey)); 
-  $usr = $usrR->fetch(PDO::FETCH_ASSOC);
-  $usrpfrpid = ("PFRP-" . substr(("0000" .  $usr['projectUserId']), -4));
-  $subTime = date('m/d/Y H:i:s');
-//{\"fldProjecTitle\":\"\",\"fldprojectirbnbr\":\"\",\"fldprojectirbexp\":\"\",\"fldprojectsubmitter\":\"\",\"fldprojectsubmiton\":\"\",\"frmcontactsubmitterfname\":\"\",\"frmcontactsubmitterlname\":\"\",\"frmcontactsubmitterphone\":\"\",\"frmcontactsubmitteremail\":\"\",\"frmcontactpifname\":\"\",\"frmcontactpilname\":\"\",\"fldPISalutations\":\"\",\"frmcontactpiphone\":\"\",\"frmcontactpiemail\":\"\",\"fldAnswerIdqstnOne\":\"NO\",\"fldAnswerIdqstnTwo\":\"NO\",\"fldAnswerIdqstnThree\":\"NO\",\"fldAnswerIdqstnFour\":\"NO\",\"docPROJECT-PROTOCOL\":\"SPECIFICATION(1).pdf\",\"btoPROJECT-PROTOCOL\":
-   //IRB-APPROVAL
-   //PROJECT-PROTOCOL
-   //CONSENT-FORM
-   //ADDITIONAL-DOCUMENT
-//TODO:  Make Questions Dynamic!!
-$htmlBody = <<<HTMLBODY
-<table border=0 style="width: 720px"><tr><td align=right><table style="font-family: tahoma, arial; font-size: 1vh;"><tr><td><b>User</b>: </td><td>{$pennkey} / {$usrpfrpid}&nbsp;</td><td style="border-left: 1px solid #000054;">&nbsp;<b>PFRP Project #</b>: </td><td>{$dspProjId}</td></tr></table> </td></tr></table>
-<table border=0 style="width: 720px">
-<tr><td style="font-family: tahoma, arial; font-size: 1.3vh; font-weight: bold; border-bottom: 1px solid #000054;">Project</td></tr>
-<tr><td style="font-family: tahoma, arial; font-size: 1vh;padding: 5px;">{$prjVal['fldProjecTitle']}</td></tr>
-<tr><td><table><tr><td style="font-family: tahoma, arial; font-size: 1vh; font-weight: bold;">IRB #:&nbsp;</td><td style="font-family: tahoma, arial; font-size: 1vh;">{$prjVal['fldprojectirbnbr']}&nbsp;&nbsp;&nbsp;</td><td style="font-family: tahoma, arial; font-size: 1vh; font-weight: bold;">IRB Expiry:&nbsp;</td><td style="font-family: tahoma, arial; font-size: 1vh;">{$prjVal['fldprojectirbexp']}&nbsp;&nbsp;&nbsp;</td><td style="font-family: tahoma, arial; font-size: 1vh; font-weight: bold;">PFRP Submission Date:&nbsp;</td><td style="font-family: tahoma, arial; font-size: 1vh;">{$subTime}</td></tr></table> </td></tr>
-<tr><td style="font-family: tahoma, arial; font-size: 1.3vh; font-weight: bold;padding-top: 8px;">Application Questions</td></tr>
-<tr><td>
-<table border=0 style="font-family: tahoma, arial; font-size: 1vh;">
-<tr><td valign=top style="border-left: 1px solid #ccc; border-bottom: 1px solid #ccc;"><b>1.</b></td><td valign=top style="border-bottom: 1px solid #ccc;">Will you be using human tissue in research?</td><td valign=top style="border-bottom: 1px solid #ccc;">{$prjVal['fldAnswerIdqstnOne']}</td></tr>
-<tr><td valign=top style="border-left: 1px solid #ccc; border-bottom: 1px solid #ccc;"><b>2.</b></td><td valign=top style="border-bottom: 1px solid #ccc;">Could the human tissue obtained from clinical procedures be used for research without compromising diagnosis or patient care?</td><td valign=top style="border-bottom: 1px solid #ccc;">{$prjVal['fldAnswerIdqstnTwo']}</td></tr>
-<tr><td valign=top style="border-left: 1px solid #ccc; border-bottom: 1px solid #ccc;"><b>3.</b></td><td valign=top style="border-bottom: 1px solid #ccc;">Will this project require a source of human tissue from a research-only procedure, with no clinical specimens being submitted to pathology?</td><td valign=top style="border-bottom: 1px solid #ccc;">{$prjVal['fldAnswerIdqstnThree']}</td></tr>
-<tr><td valign=top style="border-left: 1px solid #ccc; border-bottom: 1px solid #ccc;"><b>4.</b></td><td valign=top style="border-bottom: 1px solid #ccc;">Will this project require the collection of human material(s) directly from the operating room?</td><td valign=top style="border-bottom: 1px solid #ccc;">{$prjVal['fldAnswerIdqstnFour']}</td></tr>
-</table>
-</td></tr>
-<tr><td style="font-family: tahoma, arial; font-size: 1.3vh; font-weight: bold;padding-top: 8px;">Uploaded Documents</td></tr>
-<tr><td>
-<table border=0 style="font-family: tahoma, arial; font-size: 1vh;">
-<tr><td valign=top style="border-left: 1px solid #ccc; border-bottom: 1px solid #ccc;"><b>1.</b></td><td valign=top style="border-bottom: 1px solid #ccc;">PROJECT-PROTOCOL</td><td valign=top style="border-bottom: 1px solid #ccc;">{$prjVal['docPROJECT-PROTOCOL']}</td></tr>
-<tr><td valign=top style="border-left: 1px solid #ccc; border-bottom: 1px solid #ccc;"><b>2.</b></td><td valign=top style="border-bottom: 1px solid #ccc;">IRB-APPROVAL</td><td valign=top style="border-bottom: 1px solid #ccc;">{$prjVal['docIRB-APPROVAL']}</td></tr>
-<tr><td valign=top style="border-left: 1px solid #ccc; border-bottom: 1px solid #ccc;"><b>3.</b></td><td valign=top style="border-bottom: 1px solid #ccc;">CONSENT-FORM</td><td valign=top style="border-bottom: 1px solid #ccc;">{$prjVal['docCONSENT-FORM']}</td></tr>
-<tr><td valign=top style="border-left: 1px solid #ccc; border-bottom: 1px solid #ccc;"><b>4.</b></td><td valign=top style="border-bottom: 1px solid #ccc;">ADDITIONAL-DOCUMENTATION</td><td valign=top style="border-bottom: 1px solid #ccc;">{$prjVal['docADDITIONAL-DOCUMENT']}</td></tr>
-</table>
-</td></tr>
-<tr><td style="font-family: tahoma, arial; font-size: 1.3vh; font-weight: bold;padding-top: 8px;">Additional Comments</td></tr>
-<tr><td style="font-family: tahoma, arial; font-size: 1vh;padding: 5px;">{$prjVal['frmprojectcomments']}&nbsp;</td></tr>
-</table>
-<table style="font-family: tahoma, arial; font-size: 1vh;">
-<tr><td colspan=2 style="font-family: tahoma, arial; font-size: 1.3vh; font-weight: bold;padding-top: 8px;">Submitter</td></tr>
-<tr><td><b>Name</b>:&nbsp;</td><td>{$prjVal['frmcontactsubmitterlname']}, {$prjVal['frmcontactsubmitterfname']} ({$pennkey})&nbsp;</td></tr>
-<tr><td><b>Phone</b>:&nbsp;</td><td>{$prjVal['frmcontactsubmitterphone']}&nbsp;</td></tr> 
-<tr><td><b>Email</b>:&nbsp;</td><td>{$prjVal['frmcontactsubmitteremail']}&nbsp;</td></tr> 
-<tr><td colspan=2 style="font-family: tahoma, arial; font-size: 1.3vh; font-weight: bold;padding-top: 8px;">Principal Investigator</td></tr>
-<tr><td><b>Name</b>:&nbsp;</td><td>{$prjVal['frmcontactpilname']}, {$prjVal['frmcontactpifname']}&nbsp;</td></tr>
-<tr><td><b>Phone</b>:&nbsp;</td><td>{$prjVal['frmcontactpiphone']}&nbsp;</td></tr> 
-<tr><td><b>Email</b>:&nbsp;</td><td>{$prjVal['frmcontactpiemail']}&nbsp;</td></tr> 
-</table>
-<p>
-HTMLBODY;
-$footer = <<<HTMLFOOT
-<table style="width: 720px;font-family: tahoma, arial; font-size: .8vh;"><tr><td><center>Pathology Feasibility Review Panel (PFRP)<br>Hospital of the University of Pennsylvania<br>3400 Spruce Street, 6 FOUNDERS<br>Philadelphia, Pennsylvania 19104<br>(215) 662-4570</td></tr></table>
-HTMLFOOT;
-$htmldoc = <<<HTMLDOC
-<table border=0 style="width: 720px"><tr><td style="border-bottom: 2px solid #000054;">{$header}</td></tr><tr><td>{$htmlBody}</td></tr><tr><td style="border-top: 1px solid #000054;text-align: center;">{$footer}</td></tr></table>
-HTMLDOC;
-$docFile = genAppFiles . "/tmp/projApp{$projectid}.html";
-$handle = fopen($docFile, 'w');
-$data = "<html><head></head><body>{$htmldoc}</body></html>";
-fwrite($handle, $data);
-fclose;
-$appFileName = "projectApplication{$projectid}.pdf";
-$appPDF = genAppFiles . "/publicobj/documents/pfrp/{$appFileName}";
-$linuxCmd = "wkhtmltopdf --load-error-handling ignore {$docFile} {$appPDF}";
-$output = shell_exec($linuxCmd);
-$updSQL = "update pfc.ut_projects set projectPDF = :pdfFileName where projectid = :projectid";
-$uR = $conn->prepare($updSQL); 
-$uR->execute(array(':pdfFileName' => $appFileName, ':projectid' => $projectid));
-return $htmldoc;
+function validateDate($date, $format = 'Y-m-d') {
+    $d = DateTime::createFromFormat($format, $date);
+    // The Y ( 4 digits year ) returns TRUE for any integer with any number of digits so changing the comparison from == to === fixes the issue.
+    return $d && $d->format($format) === $date;
+}
+
+function validateThisEmail($emailAddress) { 
+  return filter_var($emailAddress, FILTER_VALIDATE_EMAIL);
 }

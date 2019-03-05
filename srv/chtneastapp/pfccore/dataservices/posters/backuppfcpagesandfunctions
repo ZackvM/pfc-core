@@ -1080,6 +1080,17 @@ RTNTHIS;
    return json_encode($rtnData);
 }
 
+
+
+
+
+
+
+
+
+
+
+
 function myprojects($rqst, $usr, $pfrpid = "", $passedprojid = "") { 
   $tt = pfcurl;
   $securett = pfcsecureurl;
@@ -1212,6 +1223,10 @@ PBRPM;
      $RO = " READONLY ";
    } else { 
 
+
+
+
+
        $qstnHold = json_decode(callpfcrestapi("GET","https://data.chtneast.org/globalmenu/pbrpyesnoqstn",pfcaccess), true);
        $qstD = json_decode($qstnHold['datareturn'], true);
        foreach($qstD['DATA'] as $qVals) {
@@ -1232,6 +1247,10 @@ PBRPM;
        }
        $RO = "";
        $submitbtn = "<tr><td colspan=4 align=right><button onclick=\"submitPFRPApplication();\" id=sbmtBtn>Submit<br>Application</button></td></tr>";
+
+
+
+
    }
 
 $saluHold = json_decode(callpfcrestapi("GET","https://data.chtneast.org/globalmenu/standardsalutations",pfcaccess), true);
@@ -1392,6 +1411,33 @@ PROJECTTABLE;
   $rtnData['pageBody'] = $this->body; 
   return json_encode($rtnData);        
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 function genuserapphome($rqst, $usr, $pfrpid = "") { 
   $tt = pfcurl;
